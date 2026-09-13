@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Mak Mixology — Voucher</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a0a;
+            color: #fff;
+            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 16px 40px;
+            -webkit-font-smoothing: antialiased;
+        }
+        .logo {
+            width: 140px;
+            height: auto;
+            margin: 10px 0 24px;
+            border-radius: 12px;
+        }
+        .card {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 16px;
+            padding: 28px 24px;
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+        }
+        .status-icon {
+            font-size: 64px;
+            margin-bottom: 12px;
+            line-height: 1;
+        }
+        .status-label {
+            font-size: 22px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 20px;
+        }
+        .status-valid .status-label { color: #4caf50; }
+        .status-redeemed .status-label { color: #f44336; }
+        .status-expired .status-label { color: #f44336; }
+        .status-error .status-label { color: #999; }
+
+        .detail {
+            font-size: 15px;
+            color: #ccc;
+            margin: 8px 0;
+            line-height: 1.5;
+        }
+        .detail strong {
+            color: #c9a84c;
+        }
+        .voucher-code {
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            font-weight: 700;
+            color: #c9a84c;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 10px 16px;
+            margin: 16px auto;
+            display: inline-block;
+            letter-spacing: 2px;
+        }
+        .btn-redeem {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            margin-top: 24px;
+            background: #4caf50;
+            color: #fff;
+            font-size: 18px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-redeem:active {
+            transform: scale(0.97);
+            background: #388e3c;
+        }
+        .btn-redeem:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .drink-label {
+            font-size: 14px;
+            color: #c9a84c;
+            margin-top: 8px;
+            font-style: italic;
+        }
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid #333;
+            border-top-color: #c9a84c;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 40px auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text {
+            color: #888;
+            font-size: 14px;
+            margin-top: 12px;
+        }
+        .footer {
+            margin-top: 32px;
+            font-size: 12px;
+            color: #555;
+            text-align: center;
+        }
+        .confirm-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .confirm-overlay.active { display: flex; }
+        .confirm-box {
+            background: #1a1a1a;
+            border: 2px solid #c9a84c;
+            border-radius: 16px;
+            padding: 28px 24px;
+            max-width: 360px;
+            width: 100%;
+            text-align: center;
+        }
+        .confirm-box p {
+            font-size: 17px;
+            margin-bottom: 24px;
+            color: #fff;
+            line-height: 1.5;
+        }
+        .confirm-btns {
+            display: flex;
+            gap: 12px;
+        }
+        .confirm-btns button {
+            flex: 1;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 700;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        .btn-yes {
+            background: #4caf50;
+            color: #fff;
+        }
+        .btn-no {
+            background: #333;
+            color: #ccc;
+        }
+        .success-anim {
+            animation: pulse 0.4s ease-out;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <img src="https://customer-assets-wrfwihn1.emergentagent.net/wingman/ab8b1545-0aa4-4837-8712-9b3cb67e8e8c/attachments/7e20e7b277004d02960509162061f524_mak_logo.png"
+         alt="Mak Mixology" class="logo">
+
+    <div id="content">
+        <div class="card" style="padding:40px 24px">
+            <div class="spinner"></div>
+            <div class="loading-text">Verifica voucher in corso…</div>
+        </div>
+    </div>
+
+    <div id="confirmOverlay" class="confirm-overlay">
+        <div class="confirm-box">
+            <p>Confermi di voler <strong style="color:#c9a84c">riscattare</strong> questo voucher?<br>L'operazione non è reversibile.</p>
+            <div class="confirm-btns">
+                <button class="btn-no" onclick="closeConfirm()">Annulla</button>
+                <button class="btn-yes" onclick="doRedeem()">Conferma</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">Mak Mixology — Galleria delle Vittorie, Palermo</div>
+
+    <script>
+        var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw1Dv8C9hXfXC5NdYe3--LmZTpDuER2PYstaOxqiotXf-t5kWoECfMxZzvX1nQQLI-vcA/exec';
+        var currentCode = '';
+        var jsonpCounter = 0;
+
+        function getParam(name) {
+            var url = new URL(window.location.href);
+            return url.searchParams.get(name);
+        }
+
+        function jsonp(params, callback) {
+            var cbName = '_voucherCb' + (++jsonpCounter) + '_' + Date.now();
+            window[cbName] = function(data) {
+                callback(data);
+                delete window[cbName];
+                var el = document.getElementById('script_' + cbName);
+                if (el) el.remove();
+            };
+            var url = APPS_SCRIPT_URL + '?' + params + '&callback=' + cbName;
+            var s = document.createElement('script');
+            s.id = 'script_' + cbName;
+            s.src = url;
+            s.onerror = function() {
+                callback({ error: true, message: 'Errore di connessione' });
+                delete window[cbName];
+                s.remove();
+            };
+            document.body.appendChild(s);
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '—';
+            try {
+                var parts = dateStr.split('-');
+                if (parts.length === 3) {
+                    return parts[2] + '/' + parts[1] + '/' + parts[0];
+                }
+                return dateStr;
+            } catch(e) {
+                return dateStr;
+            }
+        }
+
+        function renderValid(data) {
+            var html = '<div class="card status-valid success-anim">';
+            html += '<div class="status-icon">✅</div>';
+            html += '<div class="status-label">Voucher Valido</div>';
+            html += '<div class="voucher-code">' + escHtml(currentCode) + '</div>';
+            html += '<div class="detail"><strong>Cliente:</strong> ' + escHtml(data.nome || '—') + '</div>';
+            html += '<div class="detail"><strong>Scadenza:</strong> ' + formatDate(data.scadenza) + '</div>';
+            html += '<div class="drink-label">🍸 Drink omaggio di compleanno</div>';
+            html += '<button class="btn-redeem" onclick="showConfirm()">Segna come riscattato</button>';
+            html += '</div>';
+            document.getElementById('content').innerHTML = html;
+        }
+
+        function renderRedeemed(data) {
+            var html = '<div class="card status-redeemed success-anim">';
+            html += '<div class="status-icon">🔴</div>';
+            html += '<div class="status-label">Già Riscattato</div>';
+            html += '<div class="voucher-code">' + escHtml(currentCode) + '</div>';
+            html += '<div class="detail"><strong>Cliente:</strong> ' + escHtml(data.nome || '—') + '</div>';
+            html += '<div class="detail"><strong>Riscattato il:</strong> ' + formatDate(data.dataRiscatto) + '</div>';
+            html += '</div>';
+            document.getElementById('content').innerHTML = html;
+        }
+
+        function renderExpired(data) {
+            var html = '<div class="card status-expired success-anim">';
+            html += '<div class="status-icon">❌</div>';
+            html += '<div class="status-label">Scaduto</div>';
+            html += '<div class="voucher-code">' + escHtml(currentCode) + '</div>';
+            html += '<div class="detail"><strong>Cliente:</strong> ' + escHtml(data.nome || '—') + '</div>';
+            html += '<div class="detail"><strong>Scaduto il:</strong> ' + formatDate(data.scadenza) + '</div>';
+            html += '</div>';
+            document.getElementById('content').innerHTML = html;
+        }
+
+        function renderError(msg) {
+            var html = '<div class="card status-error success-anim">';
+            html += '<div class="status-icon">⚠️</div>';
+            html += '<div class="status-label">Errore</div>';
+            html += '<div class="detail">' + escHtml(msg) + '</div>';
+            html += '</div>';
+            document.getElementById('content').innerHTML = html;
+        }
+
+        function renderNotFound() {
+            var html = '<div class="card status-error success-anim">';
+            html += '<div class="status-icon">🚫</div>';
+            html += '<div class="status-label">Voucher Non Valido</div>';
+            html += '<div class="detail">Il codice inserito non corrisponde a nessun voucher attivo.</div>';
+            html += '<div class="detail" style="margin-top:16px;color:#666;font-size:13px">Verifica il QR code o contatta la direzione.</div>';
+            html += '</div>';
+            document.getElementById('content').innerHTML = html;
+        }
+
+        function renderNoCode() {
+            var html = '<div class="card status-error">';
+            html += '<div class="status-icon">🚫</div>';
+            html += '<div class="status-label">Voucher Non Valido</div>';
+            html += '<div class="detail">Nessun codice voucher presente nell\'URL.</div>';
+            html += '<div class="detail" style="margin-top:16px;color:#666;font-size:13px">Scansiona il QR code dal biglietto del cliente.</div>';
+            html += '</div>';
+            document.getElementById('content').innerHTML = html;
+        }
+
+        function escHtml(str) {
+            var d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
+        function showConfirm() {
+            document.getElementById('confirmOverlay').classList.add('active');
+        }
+
+        function closeConfirm() {
+            document.getElementById('confirmOverlay').classList.remove('active');
+        }
+
+        function doRedeem() {
+            closeConfirm();
+            var btn = document.querySelector('.btn-redeem');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Riscatto in corso…';
+            }
+            jsonp('action=redeem&code=' + encodeURIComponent(currentCode), function(data) {
+                if (data && data.success) {
+                    var html = '<div class="card status-redeemed success-anim">';
+                    html += '<div class="status-icon">🎉</div>';
+                    html += '<div class="status-label" style="color:#4caf50">Riscattato!</div>';
+                    html += '<div class="voucher-code">' + escHtml(currentCode) + '</div>';
+                    html += '<div class="detail" style="font-size:17px;color:#fff;margin-top:12px">Voucher riscattato con successo.<br>Offri il drink al cliente! 🍸</div>';
+                    html += '</div>';
+                    document.getElementById('content').innerHTML = html;
+                } else {
+                    renderError(data.message || 'Errore durante il riscatto.');
+                }
+            });
+        }
+
+        // Init
+        (function() {
+            var code = getParam('v');
+            if (!code) {
+                renderNoCode();
+                return;
+            }
+            currentCode = code.trim().toUpperCase();
+            jsonp('action=check&code=' + encodeURIComponent(currentCode), function(data) {
+                if (data && data.error) {
+                    renderError(data.message || 'Errore di connessione.');
+                    return;
+                }
+                if (!data || !data.status) {
+                    renderNotFound();
+                    return;
+                }
+                switch (data.status) {
+                    case 'valid':
+                        renderValid(data);
+                        break;
+                    case 'redeemed':
+                        renderRedeemed(data);
+                        break;
+                    case 'expired':
+                        renderExpired(data);
+                        break;
+                    case 'not_found':
+                        renderNotFound();
+                        break;
+                    default:
+                        renderError('Stato sconosciuto: ' + data.status);
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
