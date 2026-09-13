@@ -217,23 +217,31 @@
         }
 
         function jsonp(params, callback) {
-            var cbName = '_voucherCb' + (++jsonpCounter) + '_' + Date.now();
-            window[cbName] = function(data) {
-                callback(data);
-                delete window[cbName];
-                var el = document.getElementById('script_' + cbName);
-                if (el) el.remove();
-            };
-            var url = APPS_SCRIPT_URL + '?' + params + '&callback=' + cbName;
-            var s = document.createElement('script');
-            s.id = 'script_' + cbName;
-            s.src = url;
-            s.onerror = function() {
-                callback({ error: true, message: 'Errore di connessione' });
-                delete window[cbName];
-                s.remove();
-            };
-            document.body.appendChild(s);
+            var url = APPS_SCRIPT_URL + '?' + params;
+            fetch(url, {redirect: 'follow'})
+                .then(function(r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                })
+                .then(function(data) { callback(data); })
+                .catch(function(err) {
+                    // Fallback to JSONP if fetch fails (CORS)
+                    var cbName = '_voucherCb' + (++jsonpCounter) + '_' + Date.now();
+                    window[cbName] = function(data) {
+                        callback(data);
+                        delete window[cbName];
+                        var el = document.getElementById('s_' + cbName);
+                        if (el) el.remove();
+                    };
+                    var s = document.createElement('script');
+                    s.id = 's_' + cbName;
+                    s.src = url + '&callback=' + cbName;
+                    s.onerror = function() {
+                        callback({ error: true, message: 'Errore di connessione' });
+                        delete window[cbName]; s.remove();
+                    };
+                    document.body.appendChild(s);
+                });
         }
 
         function formatDate(dateStr) {
