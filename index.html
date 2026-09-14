@@ -12,159 +12,127 @@ body{background:#0a0a0a;font-family:-apple-system,sans-serif;color:#fff;min-heig
 h2{color:#c9a84c;font-size:18px;letter-spacing:2px;margin-bottom:6px}
 .code{font-size:20px;font-weight:700;letter-spacing:3px;color:#fff;margin:10px 0}
 .sub{font-size:13px;color:#888;margin-bottom:18px}
-.status-box{border-radius:12px;padding:18px 16px;margin:16px 0;font-size:15px;line-height:1.6;white-space:pre-line}
-.valid-box{background:#0d2b0d;border:1px solid #2d7a2d;color:#7fe87f}
-.redeemed-box{background:#2b1a00;border:1px solid #c9a84c;color:#c9a84c}
-.error-box{background:#2b0d0d;border:1px solid #7a2d2d;color:#e87f7f}
-.loading-box{background:#1a1a1a;border:1px solid #555;color:#aaa}
+.sbox{border-radius:12px;padding:18px 16px;margin:16px 0;font-size:15px;line-height:1.6;white-space:pre-line}
+.v{background:#0d2b0d;border:1px solid #2d7a2d;color:#7fe87f}
+.r{background:#2b1a00;border:1px solid #c9a84c;color:#c9a84c}
+.e{background:#2b0d0d;border:1px solid #7a2d2d;color:#e87f7f}
+.l{background:#1a1a1a;border:1px solid #555;color:#aaa}
 .qr-wrap{margin:18px 0 6px;display:none}
 .qr-wrap img{border-radius:10px;border:2px solid #c9a84c44}
 .qr-label{font-size:12px;color:#666;margin-top:6px}
 .staff-btn{margin-top:24px;background:none;border:1px solid #333;color:#555;font-size:12px;padding:8px 18px;border-radius:20px;cursor:pointer;width:100%;display:none}
-.btn-redeem{width:100%;padding:13px;border-radius:10px;border:none;font-size:15px;font-weight:700;cursor:pointer;margin-top:14px;background:#1a5c1a;color:#7fe87f;border:1px solid #2d7a2d;display:none}
-.open-banner{background:#1a1a1a;border:1px solid #c9a84c44;border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px;color:#aaa;text-align:center;display:none}
-.open-banner a{color:#c9a84c;font-weight:bold;text-decoration:none}
+.btn-redeem{width:100%;padding:13px;border-radius:10px;border:1px solid #2d7a2d;font-size:15px;font-weight:700;cursor:pointer;margin-top:14px;background:#1a5c1a;color:#7fe87f;display:none}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:100}
 .pin-box{background:#1a1a1a;border:1px solid #c9a84c;border-radius:16px;padding:28px 24px;width:300px;text-align:center}
 .pin-box h3{color:#c9a84c;margin-bottom:16px;font-size:16px}
 .pin-input{width:100%;background:#111;border:1px solid #444;color:#fff;font-size:24px;letter-spacing:6px;text-align:center;padding:12px;border-radius:8px;margin-bottom:14px}
 .btn{width:100%;padding:13px;border-radius:10px;border:none;font-size:15px;font-weight:700;cursor:pointer;margin-top:6px}
-.btn-confirm{background:#c9a84c;color:#000}
-.btn-cancel{background:#333;color:#aaa}
+.btn-ok{background:#c9a84c;color:#000}
+.btn-no{background:#333;color:#aaa}
 </style>
 </head>
 <body>
-
 <img class="logo-img" src="https://raw.githubusercontent.com/pippopa1975/mak-voucher/main/logo.png" onerror="this.style.display='none'">
-
-<div id="openBanner" class="open-banner">
-  📱 Apri questo link in <a id="openLink" href="#">Safari o Chrome</a> per continuare
-</div>
-
 <div class="card">
   <h2>VOUCHER OMAGGIO</h2>
-  <div class="code" id="codeDisplay">—</div>
+  <div class="code" id="codeEl">—</div>
   <div class="sub">Drink di compleanno 🎂</div>
-  <div class="status-box loading-box" id="statusBox">⏳ Verifica in corso…</div>
-  <div class="qr-wrap" id="qrWrap">
+  <div class="sbox l" id="sb">⏳ Verifica in corso…</div>
+  <div class="qr-wrap" id="qrW">
     <img id="qrImg" src="" width="180" height="180">
     <div class="qr-label">📱 Fai scansionare al personale</div>
   </div>
-  <button class="btn-redeem" id="btnRedeem" onclick="doRedeem()">✅ Segna come riscattato</button>
-  <button class="staff-btn" id="btnStaff" onclick="showPin()">👤 Staff — Riscatta voucher</button>
+  <button class="btn-redeem" id="btnR" onclick="doRedeem()">✅ Segna come riscattato</button>
+  <button class="staff-btn" id="btnS" onclick="showPin()">👤 Staff — Riscatta voucher</button>
 </div>
-
-<div class="overlay" id="overlay">
+<div class="overlay" id="ov">
   <div class="pin-box">
     <h3>🔐 PIN Staff</h3>
-    <input class="pin-input" type="password" inputmode="numeric" id="pinInput" maxlength="6" placeholder="• • • •">
-    <button class="btn btn-confirm" onclick="checkPin()">Conferma</button>
-    <button class="btn btn-cancel" onclick="hidePin()">Annulla</button>
+    <input class="pin-input" type="password" inputmode="numeric" id="pinI" maxlength="6" placeholder="• • • •">
+    <button class="btn btn-ok" onclick="checkPin()">Conferma</button>
+    <button class="btn btn-no" onclick="hidePin()">Annulla</button>
   </div>
 </div>
-
 <script>
 var GAS = 'https://script.google.com/macros/s/AKfycbx1Ck35hUTsO_uKGZe7fcpgURCRnHmgvdkVyIkTxT_lm9eLSAw46wUI9BvQ-jOjQnoJ6A/exec';
 var code = (new URLSearchParams(window.location.search).get('v') || '').toUpperCase();
 var PIN  = '1250';
 
-// Detect WhatsApp in-app browser
-var isWA = /whatsapp/i.test(navigator.userAgent);
-if (isWA) {
-  var banner = document.getElementById('openBanner');
-  var link   = document.getElementById('openLink');
-  link.href  = window.location.href;
-  banner.style.display = 'block';
-}
-
-document.getElementById('codeDisplay').textContent = code || '—';
+document.getElementById('codeEl').textContent = code || '—';
 
 if (!code) {
-  showBox('error-box', 'Nessun codice voucher trovato.');
+  setBox('e', 'Nessun codice voucher trovato.');
 } else {
-  // Genera QR del link corrente
-  var qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&color=c9a84c&bgcolor=1a1a1a&data=' + encodeURIComponent(window.location.href);
-  document.getElementById('qrImg').src = qrSrc;
-  callGAS('check', code, onCheck);
+  document.getElementById('qrImg').src =
+    'https://api.qrserver.com/v1/create-qr-code/?size=220x220&color=c9a84c&bgcolor=1a1a1a&data=' +
+    encodeURIComponent(window.location.href);
+  callGAS({action:'check', code:code}, onCheck);
 }
 
-function callGAS(action, code, cb) {
-  var cbName = '_cb_' + Date.now();
-  var timer = setTimeout(function() {
-    window[cbName] = null;
-    showBox('error-box', '⏰ Timeout — connessione lenta.\nRicarica la pagina.');
-  }, 12000);
-
-  window[cbName] = function(data) {
-    clearTimeout(timer);
-    window[cbName] = null;
-    cb(data);
-  };
-
-  var s = document.createElement('script');
-  s.onerror = function() {
-    clearTimeout(timer);
-    window[cbName] = null;
-    // Fallback: prova fetch (per browser che supportano CORS su GAS)
-    fetch(GAS + '?action=' + action + '&code=' + encodeURIComponent(code))
-      .then(function(r){ return r.text(); })
-      .then(function(t){
-        try { cb(JSON.parse(t)); } catch(e) { showBox('error-box','Errore risposta server.'); }
-      })
-      .catch(function(){ showBox('error-box','Connessione non riuscita.\nProva ad aprire il link in Chrome.'); });
-  };
-  s.src = GAS + '?action=' + action + '&code=' + encodeURIComponent(code) + '&callback=' + cbName;
-  document.head.appendChild(s);
+function callGAS(params, cb) {
+  var qs = Object.keys(params).map(k => k+'='+encodeURIComponent(params[k])).join('&');
+  fetch(GAS + '?' + qs)
+    .then(function(r){
+      if (!r.ok) throw new Error('HTTP '+r.status);
+      return r.text();
+    })
+    .then(function(t){
+      // La risposta potrebbe essere JSON puro o JSONP (callback({...}))
+      var m = t.match(/^[^(]+\((.+)\)\s*;?\s*$/s);
+      var data = JSON.parse(m ? m[1] : t);
+      cb(data);
+    })
+    .catch(function(err){
+      setBox('e', '⏰ Connessione non riuscita.\n'+err.message+'\nRicarica la pagina.');
+    });
 }
 
 function onCheck(d) {
   if (d.status === 'valid') {
-    showBox('valid-box', '✅ VOUCHER VALIDO\n👤 ' + d.nome + '\n📅 Scadenza: ' + d.scadenza);
-    document.getElementById('qrWrap').style.display = 'block';
-    document.getElementById('btnStaff').style.display = 'block';
+    setBox('v', '✅ VOUCHER VALIDO\n👤 '+d.nome+'\n📅 Scadenza: '+d.scadenza);
+    document.getElementById('qrW').style.display = 'block';
+    document.getElementById('btnS').style.display = 'block';
   } else if (d.status === 'redeemed') {
-    showBox('redeemed-box', '⚠️ GIÀ RISCATTATO\n👤 ' + d.nome + '\n🗓 ' + d.dataRiscatto);
+    setBox('r', '⚠️ GIÀ RISCATTATO\n👤 '+d.nome+'\n🗓 '+d.dataRiscatto);
   } else if (d.status === 'expired') {
-    showBox('error-box', '❌ VOUCHER SCADUTO\n📅 ' + d.scadenza);
+    setBox('e', '❌ VOUCHER SCADUTO\n📅 '+d.scadenza);
   } else {
-    showBox('error-box', '❌ VOUCHER NON TROVATO');
+    setBox('e', '❌ VOUCHER NON TROVATO');
   }
 }
 
 function onRedeem(d) {
   if (d.success) {
-    showBox('valid-box', '🎉 RISCATTATO!\n' + d.message);
-    document.getElementById('btnRedeem').style.display = 'none';
-    document.getElementById('btnStaff').style.display  = 'none';
-    document.getElementById('qrWrap').style.display    = 'none';
+    setBox('v', '🎉 RISCATTATO!\n'+d.message);
+    document.getElementById('btnR').style.display = 'none';
+    document.getElementById('btnS').style.display = 'none';
+    document.getElementById('qrW').style.display  = 'none';
   } else {
-    showBox('error-box', '❌ ' + d.message);
+    setBox('e', '❌ '+d.message);
   }
 }
 
 function doRedeem() {
-  document.getElementById('btnRedeem').style.display = 'none';
-  showBox('loading-box', '⏳ Riscatto in corso…');
-  callGAS('redeem', code, onRedeem);
+  document.getElementById('btnR').style.display = 'none';
+  setBox('l', '⏳ Riscatto in corso…');
+  callGAS({action:'redeem', code:code}, onRedeem);
 }
 
-function showBox(cls, msg) {
-  var b = document.getElementById('statusBox');
-  b.className = 'status-box ' + cls;
-  b.textContent = msg;
+function setBox(cls, msg) {
+  var b = document.getElementById('sb');
+  b.className = 'sbox '+cls; b.textContent = msg;
 }
-
-function showPin()  { document.getElementById('overlay').style.display='flex'; document.getElementById('pinInput').value=''; document.getElementById('pinInput').focus(); }
-function hidePin()  { document.getElementById('overlay').style.display='none'; }
+function showPin()  { document.getElementById('ov').style.display='flex'; document.getElementById('pinI').value=''; document.getElementById('pinI').focus(); }
+function hidePin()  { document.getElementById('ov').style.display='none'; }
 function checkPin() {
-  if (document.getElementById('pinInput').value.trim() !== PIN) {
-    document.getElementById('pinInput').value='';
-    document.getElementById('pinInput').placeholder='PIN errato, riprova';
+  if (document.getElementById('pinI').value.trim() !== PIN) {
+    document.getElementById('pinI').value='';
+    document.getElementById('pinI').placeholder='PIN errato, riprova';
     return;
   }
   hidePin();
-  document.getElementById('btnRedeem').style.display = 'block';
-  document.getElementById('btnStaff').style.display  = 'none';
+  document.getElementById('btnR').style.display = 'block';
+  document.getElementById('btnS').style.display = 'none';
 }
 </script>
 </body>
