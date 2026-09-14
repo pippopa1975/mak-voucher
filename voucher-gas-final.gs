@@ -145,6 +145,8 @@ function redeemVoucher(code) {
   return { success: false, message: 'Voucher non trovato.' };
 }
 
+// NOTA: il parametro "compleanno" deve essere in formato ISO YYYY-MM-DD (es. "1975-09-14").
+// new Date(compleanno) richiede questo formato per parsare correttamente la data.
 function generateVoucher(nome, email, telefono, compleanno) {
   var sheet = getSheet();
   var nomePart = nome.replace(/[^A-Za-z]/g,'').toUpperCase().substring(0,4);
