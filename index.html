@@ -44,7 +44,7 @@
             letter-spacing: 1.5px;
             margin-bottom: 20px;
         }
-        .status-valid .status-label { color: #4caf50; }
+        .status-valid .status-label { color: #c9a84c; }
         .status-redeemed .status-label { color: #f44336; }
         .status-expired .status-label { color: #f44336; }
         .status-error .status-label { color: #999; }
@@ -76,7 +76,7 @@
             width: 100%;
             padding: 16px;
             margin-top: 24px;
-            background: #4caf50;
+            background: #b8762a;
             color: #fff;
             font-size: 18px;
             font-weight: 700;
@@ -90,7 +90,7 @@
         }
         .btn-redeem:active {
             transform: scale(0.97);
-            background: #388e3c;
+            background: #96581a;
         }
         .btn-redeem:disabled {
             background: #555;
@@ -165,7 +165,7 @@
             text-transform: uppercase;
         }
         .btn-yes {
-            background: #4caf50;
+            background: #b8762a;
             color: #fff;
         }
         .btn-no {
@@ -261,10 +261,10 @@
                 attempt++;
                 var cbName = '_voucherCb' + (++jsonpCounter) + '_' + Date.now();
                 jsonpOnce(params, cbName, function(result) {
-                    if (result === null && attempt < maxTries) {
+                    if ((result === null || (result && result.error === true)) && attempt < maxTries) {
                         // Timeout: riprova dopo 500ms
                         setTimeout(tryOnce, 500);
-                    } else if (result === null) {
+                    } else if (result === null || (result && result.error === true)) {
                         callback({ error: true, message: 'Timeout — controlla la connessione' });
                     } else {
                         callback(result);
@@ -376,7 +376,7 @@
                 if (data && data.success) {
                     var html = '<div class="card status-redeemed success-anim">';
                     html += '<div class="status-icon">🎉</div>';
-                    html += '<div class="status-label" style="color:#4caf50">Riscattato!</div>';
+                    html += '<div class="status-label" style="color:#c9a84c">Riscattato!</div>';
                     html += '<div class="voucher-code">' + escHtml(currentCode) + '</div>';
                     html += '<div class="detail" style="font-size:17px;color:#fff;margin-top:12px">Voucher riscattato con successo.<br>Offri il drink al cliente! 🍸</div>';
                     html += '</div>';

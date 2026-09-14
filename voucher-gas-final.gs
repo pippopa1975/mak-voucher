@@ -7,6 +7,21 @@ function doGet(e) {
   var vCode  = (e.parameter.v || '').toString().trim().toUpperCase();
 
   // API calls (from within the same page via google.script.run — kept for legacy)
+  if (action === 'generate') {
+    var nome = e.parameter.nome || '';
+    var email = e.parameter.email || '';
+    var telefono = e.parameter.telefono || '';
+    var compleanno = e.parameter.compleanno || '';
+    if (!nome || !compleanno) {
+      var r = ContentService.createTextOutput(cb+'({"status":"error","message":"Parametri mancanti"})');
+      r.setMimeType(ContentService.MimeType.JAVASCRIPT);
+      return r;
+    }
+    var result = generateVoucher(nome, email, telefono, compleanno);
+    var out = ContentService.createTextOutput(cb+'('+JSON.stringify(result)+')');
+    out.setMimeType(ContentService.MimeType.JAVASCRIPT);
+    return out;
+  }
   if (action === 'check' || action === 'redeem') {
     var result = (action === 'check') ? checkVoucher(code) : redeemVoucher(code);
     var cb = e.parameter.callback || '';
@@ -143,8 +158,7 @@ function generateVoucher(nome, email, telefono, compleanno) {
   var scadenza = new Date(bd.getTime()); scadenza.setDate(scadenza.getDate()+10);
   sheet.appendRow([codice, nome, email, telefono, fmtIT(bd), fmtIT(new Date()), fmtIT(scadenza), 'Valido', '']);
   // QR points to the script itself (no CORS issue)
-  var scriptUrl = ScriptApp.getService().getUrl();
-  var validationUrl = scriptUrl + '?v=' + codice;
+  var validationUrl = 'https://pippopa1975.github.io/mak-voucher/?v=' + codice;
   var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(validationUrl);
   return { codice: codice, qrUrl: qrUrl, scadenza: fmtIT(scadenza), validationUrl: validationUrl };
 }
@@ -166,3 +180,5 @@ function fmtIT(d) {
 }
 
 function testCheck() { Logger.log(JSON.stringify(checkVoucher('MAK-MARI-1409-VQLR'))); }
+
+function testGenerate() { Logger.log(JSON.stringify(generateVoucher('Mario Rossi','test@test.com','3331234567','1990-03-15'))); }
