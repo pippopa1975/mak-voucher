@@ -1,8 +1,20 @@
+/* ══════════════════════════════════════════════════════════════════
+   MAK MIXOLOGY — VOUCHER + GIFT CARD + BUONI OMAGGIO
+   Google Apps Script (Web App)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── CONFIG ──────────────────────────────────────────────────────── */
 var SHEET_ID = '1-0JMPMBtJTJ4WVUz_MnkzHYAkUqWmLmpsmtKTN69464';
 var SHEET_NAME = 'Vouchers';
 var REPORT_SHEET_ID = '1txRlZ0uuUg1vW5CwqTZ47x2CuVzADlVxIVbzq-vscW4';
 var REPORT_SHEET_NAME = 'Report Voucher';
+var CRM_SHEET_ID = '1txRlZ0uuUg1vW5CwqTZ47x2CuVzADlVxIVbzq-vscW4';
+var GC_SHEET_NAME = 'Gift Card';
+var BON_SHEET_NAME = 'Buoni Omaggio';
 var GITHUB_BASE = 'https://pippopa1975.github.io/mak-voucher/';
+var STRIPE_SK = 'YOUR_STRIPE_SECRET_KEY_HERE';
+
+/* ── MAIN ROUTER (GET) ──────────────────────────────────────────── */
 
 function doGet(e) {
   var action = (e.parameter.action || '').toString().trim();
@@ -10,6 +22,7 @@ function doGet(e) {
   var vCode  = (e.parameter.v     || '').toString().trim().toUpperCase();
   var cb     = e.parameter.callback || 'callback';
 
+  // Birthday voucher actions (existing)
   if (action === 'generate') {
     var nome       = e.parameter.nome       || '';
     var email      = e.parameter.email      || '';
@@ -26,11 +39,92 @@ function doGet(e) {
     return jsonpOut(cb, result);
   }
 
-  // Nessuna action → serve la pagina HTML di validazione
+  // Gift Card actions
+  if (action === 'create_payment_intent') {
+    var amount = parseInt(e.parameter.amount || '0');
+    return jsonpOut(cb, createPaymentIntent(amount));
+  }
+
+  if (action === 'create_gift_card') {
+    var gcData = {
+      mittente: e.parameter.mittente || '',
+      destinatario: e.parameter.destinatario || '',
+      whatsapp: e.parameter.whatsapp || '',
+      email: e.parameter.email || '',
+      importo: parseInt(e.parameter.importo || '0'),
+      messaggio: e.parameter.messaggio || '',
+      paid: e.parameter.paid || 'stripe',
+      payment_intent: e.parameter.payment_intent || ''
+    };
+    return jsonpOut(cb, createGiftCard(gcData));
+  }
+
+  if (action === 'check_gc') {
+    return jsonpOut(cb, checkGiftCard(code));
+  }
+  if (action === 'redeem_gc') {
+    return jsonpOut(cb, redeemGiftCard(code));
+  }
+
+  // Buono Omaggio actions
+  if (action === 'create_buono') {
+    var bonData = {
+      destinatario: e.parameter.destinatario || '',
+      whatsapp: e.parameter.whatsapp || '',
+      email: e.parameter.email || '',
+      tipo: e.parameter.tipo || 'drink',
+      valore: e.parameter.valore || '',
+      scadenza_giorni: parseInt(e.parameter.scadenza_giorni || '180')
+    };
+    return jsonpOut(cb, createBuono(bonData));
+  }
+
+  if (action === 'check_bon') {
+    return jsonpOut(cb, checkBuono(code));
+  }
+  if (action === 'redeem_bon') {
+    return jsonpOut(cb, redeemBuono(code));
+  }
+
+  // No action → serve validation HTML (existing birthday voucher)
   return HtmlService.createHtmlOutput(buildHtml(vCode))
     .setTitle('Mak Mixology — Voucher')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
+
+/* ── POST HANDLER (Stripe webhooks) ─────────────────────────────── */
+
+function doPost(e) {
+  try {
+    var body = JSON.parse(e.postData.contents);
+    var type = body.type || '';
+
+    if (type === 'payment_intent.succeeded') {
+      var pi = body.data.object;
+      var meta = pi.metadata || {};
+      if (meta.type === 'gift_card') {
+        createGiftCard({
+          mittente: meta.mittente || '',
+          destinatario: meta.destinatario || '',
+          whatsapp: meta.whatsapp || '',
+          email: meta.email || '',
+          importo: parseInt(meta.importo || '0'),
+          messaggio: meta.messaggio || '',
+          paid: 'stripe',
+          payment_intent: pi.id
+        });
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({received: true}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({error: err.message}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/* ── EXISTING: serverCheck / serverRedeem (for Apps Script HTML) ── */
 
 function serverCheck(code) {
   return checkVoucher(code.toString().trim().toUpperCase());
@@ -39,7 +133,9 @@ function serverRedeem(code) {
   return redeemVoucher(code.toString().trim().toUpperCase());
 }
 
-/* ── CORE LOGIC ─────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════
+   BIRTHDAY VOUCHER LOGIC (EXISTING — UNCHANGED)
+   ══════════════════════════════════════════════════════════════════ */
 
 function checkVoucher(code) {
   var sheet = getSheet();
@@ -99,6 +195,295 @@ function generateVoucher(nome, email, telefono, compleanno) {
   return {codice:codice, qrUrl:qrUrl, scadenza:fmtIT(scadenza), validationUrl:validationUrl};
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   STRIPE PAYMENT INTENT
+   ══════════════════════════════════════════════════════════════════ */
+
+function createPaymentIntent(amountEur) {
+  if (!amountEur || amountEur < 10) {
+    return {success: false, message: 'Importo minimo €10'};
+  }
+  try {
+    var response = UrlFetchApp.fetch('https://api.stripe.com/v1/payment_intents', {
+      method: 'post',
+      headers: {
+        'Authorization': 'Bearer ' + STRIPE_SK
+      },
+      payload: {
+        'amount': (amountEur * 100).toString(),
+        'currency': 'eur',
+        'automatic_payment_methods[enabled]': 'true',
+        'metadata[type]': 'gift_card'
+      },
+      muteHttpExceptions: true
+    });
+    var data = JSON.parse(response.getContentText());
+    if (data.error) {
+      return {success: false, message: data.error.message};
+    }
+    return {success: true, clientSecret: data.client_secret, paymentIntentId: data.id};
+  } catch(err) {
+    return {success: false, message: 'Errore Stripe: ' + err.message};
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   GIFT CARD
+   ══════════════════════════════════════════════════════════════════ */
+
+function getGCSheet() {
+  var ss = SpreadsheetApp.openById(CRM_SHEET_ID);
+  var s = ss.getSheetByName(GC_SHEET_NAME);
+  if (!s) {
+    s = ss.insertSheet(GC_SHEET_NAME);
+    s.appendRow(['Numero','Mittente','Destinatario','WhatsApp','Email','Importo (€)','Data Emissione','Scadenza','Stato','Pagamento']);
+    s.getRange(1,1,1,10).setFontWeight('bold').setBackground('#c9a84c');
+  }
+  return s;
+}
+
+function nextGCCode() {
+  var sheet = getGCSheet();
+  var data = sheet.getDataRange().getValues();
+  var year = new Date().getFullYear();
+  var max = 0;
+  for (var i = 1; i < data.length; i++) {
+    var c = data[i][0].toString();
+    var match = c.match(/^GC-(\d{4})-(\d+)$/);
+    if (match && parseInt(match[1]) === year) {
+      var n = parseInt(match[2]);
+      if (n > max) max = n;
+    }
+  }
+  var next = max + 1;
+  var padded = ('000' + next).slice(-3);
+  return 'GC-' + year + '-' + padded;
+}
+
+function createGiftCard(d) {
+  if (!d.importo || d.importo < 10) {
+    return {success: false, message: 'Importo minimo €10'};
+  }
+  if (!d.destinatario) {
+    return {success: false, message: 'Destinatario obbligatorio'};
+  }
+
+  var sheet = getGCSheet();
+  var code = nextGCCode();
+  var oggi = new Date();
+  var scadenza = new Date(oggi.getTime());
+  scadenza.setMonth(scadenza.getMonth() + 6);
+  var pagamento = d.paid === 'manual' ? 'Manuale' : 'Stripe';
+  if (d.payment_intent) pagamento += ' (' + d.payment_intent + ')';
+
+  // Columns: Numero, Mittente, Destinatario, WhatsApp, Email, Importo (€), Data Emissione, Scadenza, Stato, Pagamento
+  sheet.appendRow([
+    code,
+    d.mittente,
+    d.destinatario,
+    d.whatsapp,
+    d.email,
+    d.importo,
+    fmtIT(oggi),
+    fmtIT(scadenza),
+    'Valida',
+    pagamento
+  ]);
+
+  var validationUrl = GITHUB_BASE + 'gc.html?code=' + code;
+
+  return {
+    success: true,
+    code: code,
+    importo: d.importo,
+    scadenza: fmtIT(scadenza),
+    url: validationUrl
+  };
+}
+
+function checkGiftCard(code) {
+  var sheet = getGCSheet();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0].toString().trim().toUpperCase() !== code) continue;
+    var stato = data[i][8].toString().trim();
+    var scadenzaStr = data[i][7].toString().trim();
+    var scadenza = parseIT(scadenzaStr);
+    if (scadenza) scadenza.setHours(23,59,59,999);
+    var oggi = new Date(); oggi.setHours(0,0,0,0);
+
+    if (stato === 'Riscattata' || stato === 'Utilizzata') {
+      return {status:'redeemed', destinatario: data[i][2], mittente: data[i][1], importo: data[i][5], scadenza: scadenzaStr, dataRiscatto: stato};
+    }
+    if (scadenza && scadenza < oggi) {
+      sheet.getRange(i+1, 9).setValue('Scaduta');
+      return {status:'expired', scadenza: scadenzaStr};
+    }
+    return {
+      status: 'valid',
+      mittente: data[i][1],
+      destinatario: data[i][2],
+      importo: data[i][5],
+      scadenza: scadenzaStr
+    };
+  }
+  return {status:'not_found'};
+}
+
+function redeemGiftCard(code) {
+  var sheet = getGCSheet();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0].toString().trim().toUpperCase() !== code) continue;
+    var stato = data[i][8].toString().trim();
+    if (stato === 'Riscattata' || stato === 'Utilizzata') {
+      return {success: false, message: 'Gift card già utilizzata.'};
+    }
+    var scadenzaStr = data[i][7].toString().trim();
+    var scadenza = parseIT(scadenzaStr);
+    if (scadenza) {
+      scadenza.setHours(23,59,59,999);
+      if (scadenza < new Date()) {
+        sheet.getRange(i+1, 9).setValue('Scaduta');
+        return {success: false, message: 'Gift card scaduta.'};
+      }
+    }
+    sheet.getRange(i+1, 9).setValue('Riscattata');
+    return {success: true, message: 'Gift card €' + data[i][5] + ' riscattata con successo!'};
+  }
+  return {success: false, message: 'Gift card non trovata.'};
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   BUONO OMAGGIO
+   ══════════════════════════════════════════════════════════════════ */
+
+function getBonSheet() {
+  var ss = SpreadsheetApp.openById(CRM_SHEET_ID);
+  var s = ss.getSheetByName(BON_SHEET_NAME);
+  if (!s) {
+    s = ss.insertSheet(BON_SHEET_NAME);
+    s.appendRow(['Numero','Destinatario','WhatsApp','Email','Tipo','Valore','Data Emissione','Scadenza','Stato']);
+    s.getRange(1,1,1,9).setFontWeight('bold').setBackground('#c9a84c');
+  }
+  return s;
+}
+
+function nextBonCode() {
+  var sheet = getBonSheet();
+  var data = sheet.getDataRange().getValues();
+  var max = 0;
+  for (var i = 1; i < data.length; i++) {
+    var c = data[i][0].toString();
+    var match = c.match(/^BON-(\d+)$/);
+    if (match) {
+      var n = parseInt(match[1]);
+      if (n > max) max = n;
+    }
+  }
+  var next = max + 1;
+  var padded = ('000' + next).slice(-3);
+  return 'BON-' + padded;
+}
+
+function createBuono(d) {
+  if (!d.destinatario) {
+    return {success: false, message: 'Destinatario obbligatorio'};
+  }
+  if (!d.valore) {
+    return {success: false, message: 'Valore/drink obbligatorio'};
+  }
+
+  var sheet = getBonSheet();
+  var code = nextBonCode();
+  var oggi = new Date();
+  var giorni = d.scadenza_giorni || 180;
+  var scadenza = new Date(oggi.getTime());
+  scadenza.setDate(scadenza.getDate() + giorni);
+
+  var tipo = d.tipo === 'importo' ? 'Importo' : 'Drink';
+
+  // Columns: Numero, Destinatario, WhatsApp, Email, Tipo, Valore, Data Emissione, Scadenza, Stato
+  sheet.appendRow([
+    code,
+    d.destinatario,
+    d.whatsapp,
+    d.email,
+    tipo,
+    d.valore,
+    fmtIT(oggi),
+    fmtIT(scadenza),
+    'Valido'
+  ]);
+
+  var validationUrl = GITHUB_BASE + 'bon.html?code=' + code;
+
+  return {
+    success: true,
+    code: code,
+    tipo: tipo,
+    valore: d.valore,
+    scadenza: fmtIT(scadenza),
+    url: validationUrl
+  };
+}
+
+function checkBuono(code) {
+  var sheet = getBonSheet();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0].toString().trim().toUpperCase() !== code) continue;
+    var stato = data[i][8].toString().trim();
+    var scadenzaStr = data[i][7].toString().trim();
+    var scadenza = parseIT(scadenzaStr);
+    if (scadenza) scadenza.setHours(23,59,59,999);
+    var oggi = new Date(); oggi.setHours(0,0,0,0);
+
+    if (stato === 'Riscattato' || stato === 'Utilizzato') {
+      return {status:'redeemed', destinatario: data[i][1], dataRiscatto: stato};
+    }
+    if (scadenza && scadenza < oggi) {
+      sheet.getRange(i+1, 9).setValue('Scaduto');
+      return {status:'expired', scadenza: scadenzaStr};
+    }
+    return {
+      status: 'valid',
+      destinatario: data[i][1],
+      tipo: data[i][4],
+      valore: data[i][5],
+      scadenza: scadenzaStr
+    };
+  }
+  return {status:'not_found'};
+}
+
+function redeemBuono(code) {
+  var sheet = getBonSheet();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0].toString().trim().toUpperCase() !== code) continue;
+    var stato = data[i][8].toString().trim();
+    if (stato === 'Riscattato' || stato === 'Utilizzato') {
+      return {success: false, message: 'Buono già utilizzato.'};
+    }
+    var scadenzaStr = data[i][7].toString().trim();
+    var scadenza = parseIT(scadenzaStr);
+    if (scadenza) {
+      scadenza.setHours(23,59,59,999);
+      if (scadenza < new Date()) {
+        sheet.getRange(i+1, 9).setValue('Scaduto');
+        return {success: false, message: 'Buono scaduto.'};
+      }
+    }
+    sheet.getRange(i+1, 9).setValue('Riscattato');
+    var tipo = data[i][4].toString();
+    var valore = data[i][5].toString();
+    var msg = tipo === 'Drink' ? 'Drink "' + valore + '" pronto!' : 'Buono €' + valore + ' riscattato!';
+    return {success: true, message: msg};
+  }
+  return {success: false, message: 'Buono non trovato.'};
+}
+
 /* ── REPORT VOUCHER ─────────────────────────────────────────────── */
 
 function getReportSheet() {
@@ -134,19 +519,33 @@ function getSheet() {
   }
   return s;
 }
+
 function fmtIT(d) {
   if (!d || isNaN(d.getTime())) return '';
   return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();
 }
+
+function parseIT(s) {
+  // Parse dd/mm/yyyy
+  if (!s) return null;
+  var parts = s.toString().split('/');
+  if (parts.length !== 3) return null;
+  var d = new Date(parseInt(parts[2]), parseInt(parts[1])-1, parseInt(parts[0]));
+  return isNaN(d.getTime()) ? null : d;
+}
+
 function jsonpOut(cb, obj) {
   var out = ContentService.createTextOutput(cb+'('+JSON.stringify(obj)+')');
   out.setMimeType(ContentService.MimeType.JAVASCRIPT);
   return out;
 }
+
 function testCheck()    { Logger.log(JSON.stringify(checkVoucher('MAK-TEST-0101-XXXX'))); }
 function testGenerate() { Logger.log(JSON.stringify(generateVoucher('Mario Rossi','t@t.com','333','1990-03-15'))); }
+function testGC()       { Logger.log(JSON.stringify(createGiftCard({mittente:'Test',destinatario:'Demo',whatsapp:'+391234567',email:'test@test.com',importo:25,messaggio:'Auguri!',paid:'manual'}))); }
+function testBuono()    { Logger.log(JSON.stringify(createBuono({destinatario:'Mario',whatsapp:'+391234567',email:'m@m.com',tipo:'drink',valore:'Negroni',scadenza_giorni:60}))); }
 
-/* ── HTML PAGE (servita direttamente dall'Apps Script) ──────────── */
+/* ── HTML PAGE (servita direttamente dall'Apps Script — birthday voucher) ──────────── */
 
 function buildHtml(preloadCode) {
   var GAS_URL = ScriptApp.getService().getUrl();
