@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mak Mixology — Admin Panel</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:28px 16px}
+.logo-img{width:80px;margin-bottom:16px}
+.card{background:#111;border:1px solid #c9a84c44;border-radius:18px;padding:28px 22px;max-width:440px;width:100%;text-align:center;margin-bottom:18px}
+h2{color:#c9a84c;font-size:18px;letter-spacing:2px;margin-bottom:4px}
+h3{color:#c9a84c;font-size:15px;letter-spacing:1px;margin-bottom:14px;margin-top:8px}
+.subtitle{color:#888;font-size:13px;margin-bottom:16px}
+.form-group{text-align:left;margin-bottom:12px}
+.form-group label{display:block;color:#c9a84c;font-size:11px;font-weight:600;letter-spacing:1px;margin-bottom:4px;text-transform:uppercase}
+.form-group input,.form-group select,.form-group textarea{width:100%;background:#1a1a1a;border:1px solid #333;color:#fff;font-size:14px;padding:11px 12px;border-radius:10px;outline:none;transition:border-color .2s}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#c9a84c}
+.form-group textarea{resize:none;height:50px;font-family:inherit}
+.form-group select{appearance:none;-webkit-appearance:none;cursor:pointer}
+.wa-row{display:flex;gap:8px}
+.wa-prefix{width:75px;flex-shrink:0}
+.wa-number{flex:1}
+.toggle-row{display:flex;gap:6px;margin-bottom:12px}
+.toggle-btn{flex:1;background:#1a1a1a;border:1px solid #333;color:#888;font-size:13px;font-weight:600;padding:10px;border-radius:10px;cursor:pointer;transition:all .2s}
+.toggle-btn.active{border-color:#c9a84c;color:#c9a84c;background:#1a1a0d}
+.btn{width:100%;padding:13px;border-radius:12px;border:none;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:1px;transition:opacity .2s;margin-top:8px}
+.btn:hover:not(:disabled){opacity:.85}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-gold{background:#c9a84c;color:#000}
+.btn-green{background:#1a5c1a;color:#7fe87f;border:1px solid #2d7a2d}
+.msg-box{border-radius:10px;padding:14px;margin:12px 0;font-size:14px;line-height:1.5;white-space:pre-line;display:none}
+.msg-ok{background:#0d2b0d;border:1px solid #2d7a2d;color:#7fe87f}
+.msg-err{background:#2b0d0d;border:1px solid #7a2d2d;color:#e87f7f}
+.divider{border:none;border-top:1px solid #c9a84c33;margin:22px 0}
+.loading-spinner{display:inline-block;width:16px;height:16px;border:2px solid #333;border-top-color:#c9a84c;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* PIN overlay */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;z-index:100}
+.pin-card{background:#1a1a1a;border:1px solid #c9a84c;border-radius:16px;padding:32px 28px;width:320px;text-align:center}
+.pin-card h3{color:#c9a84c;margin-bottom:18px;font-size:17px}
+.pin-input{width:100%;background:#111;border:1px solid #444;color:#fff;font-size:26px;letter-spacing:8px;text-align:center;padding:14px;border-radius:10px;margin-bottom:16px}
+.pin-err{color:#e87f7f;font-size:12px;margin-bottom:10px;display:none}
+.powered{color:#444;font-size:11px;margin-top:18px}
+#adminPanel{display:none}
+</style>
+</head>
+<body>
+
+<!-- PIN SCREEN -->
+<div class="overlay" id="pinOverlay">
+  <div class="pin-card">
+    <img class="logo-img" src="https://raw.githubusercontent.com/pippopa1975/mak-voucher/main/logo.png" onerror="this.style.display='none'" style="width:70px;margin-bottom:14px">
+    <h3>🔐 Admin Panel</h3>
+    <input class="pin-input" type="password" inputmode="numeric" id="pinInput" maxlength="6" placeholder="PIN">
+    <div class="pin-err" id="pinErr">PIN errato</div>
+    <button class="btn btn-gold" onclick="checkPin()">Accedi</button>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="adminPanel">
+<img class="logo-img" src="https://raw.githubusercontent.com/pippopa1975/mak-voucher/main/logo.png" onerror="this.style.display='none'">
+
+<!-- SECTION A: Gift Card Manuale -->
+<div class="card">
+  <h2>🎁 GIFT CARD MANUALE</h2>
+  <div class="subtitle">Crea una gift card senza pagamento online</div>
+
+  <div class="form-group">
+    <label>Importo (€)</label>
+    <input type="number" id="gcImporto" min="10" step="1" placeholder="Es. 25">
+  </div>
+  <div class="form-group">
+    <label>Nome mittente</label>
+    <input type="text" id="gcMittente" placeholder="Chi regala">
+  </div>
+  <div class="form-group">
+    <label>Nome destinatario</label>
+    <input type="text" id="gcDestinatario" placeholder="Chi riceve">
+  </div>
+  <div class="form-group">
+    <label>WhatsApp destinatario</label>
+    <div class="wa-row">
+      <input type="text" id="gcWaPrefix" class="wa-prefix" value="+39" placeholder="+39">
+      <input type="tel" id="gcWaNumber" class="wa-number" placeholder="345 1234567">
+    </div>
+  </div>
+  <div class="form-group">
+    <label>Email destinatario</label>
+    <input type="email" id="gcEmail" placeholder="email@esempio.com">
+  </div>
+  <div class="form-group">
+    <label>Messaggio (opzionale)</label>
+    <textarea id="gcMessaggio" placeholder="Un messaggio per il destinatario..."></textarea>
+  </div>
+
+  <div class="msg-box" id="gcMsg"></div>
+  <button class="btn btn-gold" id="gcBtn" onclick="createGiftCard()">Crea e Invia Gift Card</button>
+</div>
+
+<!-- SECTION B: Buono Omaggio -->
+<div class="card">
+  <h2>🍸 BUONO OMAGGIO</h2>
+  <div class="subtitle">Crea un buono omaggio per un cliente</div>
+
+  <div class="form-group">
+    <label>Destinatario</label>
+    <input type="text" id="bonDestinatario" placeholder="Nome cliente">
+  </div>
+  <div class="form-group">
+    <label>WhatsApp</label>
+    <div class="wa-row">
+      <input type="text" id="bonWaPrefix" class="wa-prefix" value="+39" placeholder="+39">
+      <input type="tel" id="bonWaNumber" class="wa-number" placeholder="345 1234567">
+    </div>
+  </div>
+  <div class="form-group">
+    <label>Email</label>
+    <input type="email" id="bonEmail" placeholder="email@esempio.com">
+  </div>
+
+  <div class="form-group">
+    <label>Tipo</label>
+    <div class="toggle-row">
+      <button class="toggle-btn active" id="togDrink" onclick="setTipo('drink')">🍹 Drink</button>
+      <button class="toggle-btn" id="togImporto" onclick="setTipo('importo')">💶 Importo (€)</button>
+    </div>
+  </div>
+
+  <div class="form-group" id="drinkField">
+    <label>Nome drink</label>
+    <input type="text" id="bonDrink" placeholder="Es. Negroni, Aperol Spritz...">
+  </div>
+  <div class="form-group" id="importoField" style="display:none">
+    <label>Importo (€)</label>
+    <input type="number" id="bonImporto" min="1" step="1" placeholder="Es. 15">
+  </div>
+
+  <div class="form-group">
+    <label>Scadenza</label>
+    <select id="bonScadenza">
+      <option value="30">30 giorni</option>
+      <option value="60">60 giorni</option>
+      <option value="180" selected>6 mesi</option>
+    </select>
+  </div>
+
+  <div class="msg-box" id="bonMsg"></div>
+  <button class="btn btn-green" id="bonBtn" onclick="createBuono()">Crea e Invia Buono Omaggio</button>
+</div>
+
+</div><!-- end adminPanel -->
+
+<div class="powered">Mak Mixology — Admin</div>
+
+<script>
+var GAS = 'https://script.google.com/macros/s/AKfycbx1Ck35hUTsO_uKGZe7fcpgURCRnHmgvdkVyIkTxT_lm9eLSAw46wUI9BvQ-jOjQnoJ6A/exec';
+var PIN = '1250';
+var bonTipo = 'drink';
+
+document.getElementById('pinInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') checkPin();
+});
+
+function checkPin() {
+  if (document.getElementById('pinInput').value.trim() === PIN) {
+    document.getElementById('pinOverlay').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'block';
+  } else {
+    document.getElementById('pinErr').style.display = 'block';
+    document.getElementById('pinInput').value = '';
+  }
+}
+
+function setTipo(t) {
+  bonTipo = t;
+  document.getElementById('togDrink').classList.toggle('active', t === 'drink');
+  document.getElementById('togImporto').classList.toggle('active', t === 'importo');
+  document.getElementById('drinkField').style.display = t === 'drink' ? 'block' : 'none';
+  document.getElementById('importoField').style.display = t === 'importo' ? 'block' : 'none';
+}
+
+function showMsg(id, cls, msg) {
+  var el = document.getElementById(id);
+  el.className = 'msg-box ' + cls;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function callGAS(params) {
+  var qs = Object.keys(params).map(function(k){ return k + '=' + encodeURIComponent(params[k]); }).join('&');
+  return fetch(GAS + '?' + qs)
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(function(t) {
+      var m = t.match(/^[^(]+\((.+)\)\s*;?\s*$/s);
+      return JSON.parse(m ? m[1] : t);
+    });
+}
+
+async function createGiftCard() {
+  var importo = parseInt(document.getElementById('gcImporto').value);
+  var mittente = document.getElementById('gcMittente').value.trim();
+  var destinatario = document.getElementById('gcDestinatario').value.trim();
+  var waPrefix = document.getElementById('gcWaPrefix').value.trim();
+  var waNumber = document.getElementById('gcWaNumber').value.trim().replace(/\s+/g,'');
+  var email = document.getElementById('gcEmail').value.trim();
+  var messaggio = document.getElementById('gcMessaggio').value.trim();
+
+  if (!importo || importo < 10) { showMsg('gcMsg','msg-err','Importo minimo: €10'); return; }
+  if (!destinatario) { showMsg('gcMsg','msg-err','Inserisci il nome del destinatario'); return; }
+
+  var btn = document.getElementById('gcBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading-spinner"></span>Creazione...';
+  document.getElementById('gcMsg').style.display = 'none';
+
+  try {
+    var data = await callGAS({
+      action: 'create_gift_card',
+      mittente: mittente,
+      destinatario: destinatario,
+      whatsapp: waPrefix + waNumber,
+      email: email,
+      importo: importo,
+      messaggio: messaggio,
+      paid: 'manual'
+    });
+
+    if (data.success) {
+      showMsg('gcMsg','msg-ok','✅ Gift Card creata!\n\nCodice: ' + data.code + '\nValore: €' + importo + '\nDestinatario: ' + destinatario + '\nScadenza: ' + data.scadenza + '\n\nLink: ' + data.url);
+      // Reset form
+      document.getElementById('gcImporto').value = '';
+      document.getElementById('gcMittente').value = '';
+      document.getElementById('gcDestinatario').value = '';
+      document.getElementById('gcWaNumber').value = '';
+      document.getElementById('gcEmail').value = '';
+      document.getElementById('gcMessaggio').value = '';
+    } else {
+      showMsg('gcMsg','msg-err','❌ ' + (data.message || 'Errore creazione'));
+    }
+  } catch(err) {
+    showMsg('gcMsg','msg-err','❌ Errore: ' + err.message);
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Crea e Invia Gift Card';
+}
+
+async function createBuono() {
+  var destinatario = document.getElementById('bonDestinatario').value.trim();
+  var waPrefix = document.getElementById('bonWaPrefix').value.trim();
+  var waNumber = document.getElementById('bonWaNumber').value.trim().replace(/\s+/g,'');
+  var email = document.getElementById('bonEmail').value.trim();
+  var scadenza = document.getElementById('bonScadenza').value;
+
+  var tipo = bonTipo;
+  var valore = '';
+  if (tipo === 'drink') {
+    valore = document.getElementById('bonDrink').value.trim();
+    if (!valore) { showMsg('bonMsg','msg-err','Inserisci il nome del drink'); return; }
+  } else {
+    valore = document.getElementById('bonImporto').value;
+    if (!valore || parseInt(valore) < 1) { showMsg('bonMsg','msg-err','Inserisci un importo valido'); return; }
+  }
+  if (!destinatario) { showMsg('bonMsg','msg-err','Inserisci il nome del destinatario'); return; }
+
+  var btn = document.getElementById('bonBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading-spinner"></span>Creazione...';
+  document.getElementById('bonMsg').style.display = 'none';
+
+  try {
+    var data = await callGAS({
+      action: 'create_buono',
+      destinatario: destinatario,
+      whatsapp: waPrefix + waNumber,
+      email: email,
+      tipo: tipo,
+      valore: valore,
+      scadenza_giorni: scadenza
+    });
+
+    if (data.success) {
+      showMsg('bonMsg','msg-ok','✅ Buono Omaggio creato!\n\nCodice: ' + data.code + '\nTipo: ' + (tipo === 'drink' ? '🍹 ' + valore : '💶 €' + valore) + '\nDestinatario: ' + destinatario + '\nScadenza: ' + data.scadenza + '\n\nLink: ' + data.url);
+      // Reset form
+      document.getElementById('bonDestinatario').value = '';
+      document.getElementById('bonWaNumber').value = '';
+      document.getElementById('bonEmail').value = '';
+      document.getElementById('bonDrink').value = '';
+      document.getElementById('bonImporto').value = '';
+    } else {
+      showMsg('bonMsg','msg-err','❌ ' + (data.message || 'Errore creazione'));
+    }
+  } catch(err) {
+    showMsg('bonMsg','msg-err','❌ Errore: ' + err.message);
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Crea e Invia Buono Omaggio';
+}
+</script>
+</body>
+</html>
