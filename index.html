@@ -216,23 +216,19 @@
             return url.searchParams.get(name);
         }
 
-        function jsonp(params, callback) {
-            // Sandboxed iframe: origine nulla, nessun cookie Google inviato
-            // -> Apps Script risponde 200 (anonimo) su qualsiasi browser/account
-            var cbName = '_voucherCb' + (++jsonpCounter) + '_' + Date.now();
+        function jsonpOnce(params, cbName, callback) {
             var url = APPS_SCRIPT_URL + '?' + params + '&callback=' + cbName;
-
             var tid = setTimeout(function() {
                 window.removeEventListener('message', handler);
-                try { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); } catch(e) {}
-                callback({ error: true, message: 'Timeout — riprova' });
-            }, 15000);
+                try { if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe); } catch(e) {}
+                callback(null); // null = timeout, let caller retry
+            }, 12000);
 
             function handler(event) {
                 if (event.data && event.data.type === cbName) {
                     clearTimeout(tid);
                     window.removeEventListener('message', handler);
-                    try { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); } catch(e) {}
+                    try { if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe); } catch(e) {}
                     callback(event.data.result);
                 }
             }
@@ -242,9 +238,9 @@
             iframe.sandbox = 'allow-scripts';
             iframe.style.cssText = 'display:none;width:0;height:0;border:0;position:absolute';
 
-            // Inietta script nel contesto isolato dell'iframe
+            var safeUrl = url.replace(/\\/g,'\\\\').replace(/"/g,'\\"');
             var iframeHtml = '<!DOCTYPE html><html><body><script>' +
-                'var u="' + url.replace(/\\/g,'\\\\').replace(/"/g,'\\"') + '";' +
+                'var u="' + safeUrl + '";' +
                 'window["' + cbName + '"]=function(d){parent.postMessage({type:"' + cbName + '",result:d},"*");};' +
                 'var s=document.createElement("script");' +
                 's.src=u;' +
@@ -254,6 +250,28 @@
 
             iframe.srcdoc = iframeHtml;
             document.body.appendChild(iframe);
+        }
+
+        function jsonp(params, callback) {
+            // Retry automatico fino a 3 tentativi
+            var maxTries = 3;
+            var attempt = 0;
+
+            function tryOnce() {
+                attempt++;
+                var cbName = '_voucherCb' + (++jsonpCounter) + '_' + Date.now();
+                jsonpOnce(params, cbName, function(result) {
+                    if (result === null && attempt < maxTries) {
+                        // Timeout: riprova dopo 500ms
+                        setTimeout(tryOnce, 500);
+                    } else if (result === null) {
+                        callback({ error: true, message: 'Timeout — controlla la connessione' });
+                    } else {
+                        callback(result);
+                    }
+                });
+            }
+            tryOnce();
         }
 
         function formatDate(dateStr) {
