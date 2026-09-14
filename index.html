@@ -281,6 +281,19 @@
             border: 1px solid #333; border-radius: 10px; cursor: pointer;
             -webkit-tap-highlight-color: transparent;
         }
+
+        .qr-container {
+            display: flex; flex-direction: column; align-items: center;
+            margin: 18px auto 4px;
+        }
+        .qr-code {
+            width: 180px; height: 180px;
+            border: 2px solid #c9a84c; border-radius: 10px;
+        }
+        .qr-label {
+            font-size: 13px; color: #c9a84c; margin-top: 8px;
+            letter-spacing: 0.5px; text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -397,6 +410,8 @@
             html += '<div class="drink-label">🍸 Drink omaggio di compleanno</div>';
             if (isClientView) {
                 html += '<div class="client-hint">Mostra questa schermata al personale del Mak Mixology 🍹</div>';
+                var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=c9a84c&bgcolor=1a1a1a&margin=12&data=' + encodeURIComponent(window.location.href);
+                html += '<div class="qr-container"><img src="' + qrUrl + '" class="qr-code" alt="QR Voucher"><p class="qr-label">📱 Fai scansionare al personale</p></div>';
                 html += '<button class="btn-staff" onclick="showStaffPIN()">👤 Staff — Riscatta voucher</button>';
             } else {
                 html += '<button class="btn-redeem" onclick="showConfirm()">✅ Segna come riscattato</button>';
