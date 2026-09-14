@@ -191,69 +191,6 @@
             line-height: 1.6;
             font-style: italic;
         }
-
-        .pin-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.88);
-            z-index: 200;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .pin-overlay.active { display: flex; }
-        .pin-box {
-            background: #1a1a1a;
-            border: 2px solid #c9a84c;
-            border-radius: 16px;
-            padding: 28px 24px;
-            max-width: 320px;
-            width: 100%;
-            text-align: center;
-        }
-        .pin-box p {
-            font-size: 15px;
-            color: #ccc;
-            margin-bottom: 16px;
-        }
-        .pin-input {
-            width: 100%;
-            background: #111;
-            border: 1px solid #c9a84c;
-            color: #c9a84c;
-            font-size: 28px;
-            font-weight: 700;
-            letter-spacing: 8px;
-            text-align: center;
-            padding: 12px;
-            border-radius: 8px;
-            outline: none;
-            margin-bottom: 16px;
-            -webkit-text-security: disc;
-        }
-        .pin-error {
-            color: #f44336;
-            font-size: 13px;
-            margin-bottom: 12px;
-            min-height: 18px;
-        }
-        .btn-staff {
-            display: block;
-            width: 100%;
-            padding: 12px;
-            margin-top: 16px;
-            background: transparent;
-            color: #555;
-            font-size: 13px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            border: 1px solid #333;
-            border-radius: 10px;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-        }
         .staff-input-group {
             margin-bottom: 16px;
         }
@@ -314,6 +251,35 @@
             padding: 4px 12px;
             border-radius: 20px;
             margin-bottom: 20px;
+        }
+
+        .pin-overlay {
+            display: none; position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.88); z-index: 200;
+            justify-content: center; align-items: center; padding: 20px;
+        }
+        .pin-overlay.active { display: flex; }
+        .pin-box {
+            background: #1a1a1a; border: 2px solid #c9a84c;
+            border-radius: 16px; padding: 28px 24px;
+            max-width: 320px; width: 100%; text-align: center;
+        }
+        .pin-box p { font-size: 15px; color: #ccc; margin-bottom: 16px; }
+        .pin-input {
+            width: 100%; background: #111; border: 1px solid #c9a84c;
+            color: #c9a84c; font-size: 28px; font-weight: 700;
+            letter-spacing: 8px; text-align: center; padding: 12px;
+            border-radius: 8px; outline: none; margin-bottom: 16px;
+            -webkit-text-security: disc; box-sizing: border-box;
+        }
+        .pin-error { color: #f44336; font-size: 13px; margin-bottom: 12px; min-height: 18px; }
+        .btn-staff {
+            display: block; width: 100%; padding: 12px; margin-top: 16px;
+            background: transparent; color: #555; font-size: 13px;
+            font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+            border: 1px solid #333; border-radius: 10px; cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
         }
     </style>
 </head>
@@ -382,20 +348,7 @@
                 's.src=u;' +
                 's.onerror=function(){parent.postMessage({type:"' + cbName + '",result:{error:true,message:"Connessione fallita"}},"*");};' +
                 'document.body.appendChild(s);' +
-                '<\/script>
-    <div id="pinOverlay" class="pin-overlay">
-        <div class="pin-box">
-            <div style="font-size:32px;margin-bottom:12px;">🔐</div>
-            <p>Inserisci il PIN staff</p>
-            <input type="password" inputmode="numeric" id="pinInput" class="pin-input" maxlength="4" autocomplete="off" placeholder="••••">
-            <div class="pin-error" id="pinError"></div>
-            <div class="confirm-btns">
-                <button class="btn-no" onclick="closePIN()" style="padding:12px;border-radius:10px;border:none;cursor:pointer;font-weight:700;text-transform:uppercase;">Annulla</button>
-                <button class="btn-yes" onclick="verifyPIN()" style="padding:12px;border-radius:10px;border:none;cursor:pointer;font-weight:700;text-transform:uppercase;">Conferma</button>
-            </div>
-        </div>
-    </div>
-</body></html>';
+                '<\/script></body></html>';
 
             iframe.srcdoc = iframeHtml;
             document.body.appendChild(iframe);
@@ -618,7 +571,6 @@
             var entered = document.getElementById('pinInput').value.trim();
             if (entered === STAFF_PIN) {
                 closePIN();
-                // Replace staff button with redeem button
                 var sb = document.querySelector('.btn-staff');
                 if (sb) {
                     var btn = document.createElement('button');
@@ -679,9 +631,9 @@
             <p>Inserisci il PIN staff</p>
             <input type="password" inputmode="numeric" id="pinInput" class="pin-input" maxlength="4" autocomplete="off" placeholder="••••">
             <div class="pin-error" id="pinError"></div>
-            <div class="confirm-btns">
-                <button class="btn-no" onclick="closePIN()" style="padding:12px;border-radius:10px;border:none;cursor:pointer;font-weight:700;text-transform:uppercase;">Annulla</button>
-                <button class="btn-yes" onclick="verifyPIN()" style="padding:12px;border-radius:10px;border:none;cursor:pointer;font-weight:700;text-transform:uppercase;">Conferma</button>
+            <div class="confirm-btns" style="display:flex;gap:10px;margin-top:4px;">
+                <button class="btn-no" onclick="closePIN()" style="flex:1;padding:12px;border-radius:10px;background:#222;color:#aaa;border:1px solid #444;font-weight:700;text-transform:uppercase;cursor:pointer;">Annulla</button>
+                <button class="btn-yes" onclick="verifyPIN()" style="flex:1;padding:12px;border-radius:10px;background:#c9a84c;color:#000;border:none;font-weight:700;text-transform:uppercase;cursor:pointer;">Conferma</button>
             </div>
         </div>
     </div>
