@@ -43,6 +43,15 @@ h3{color:#c9a84c;font-size:15px;letter-spacing:1px;margin-bottom:14px;margin-top
 .pin-err{color:#e87f7f;font-size:12px;margin-bottom:10px;display:none}
 .powered{color:#444;font-size:11px;margin-top:18px}
 #adminPanel{display:none}
+
+.share-box{background:#111;border:1px solid #c9a84c55;border-radius:12px;padding:18px 16px;margin-top:14px;display:none;text-align:center}
+.share-box .share-title{color:#c9a84c;font-size:13px;letter-spacing:1px;margin-bottom:10px}
+.share-box .share-link{background:#0a0a0a;border:1px solid #333;border-radius:8px;padding:10px;font-size:12px;color:#aaa;word-break:break-all;margin-bottom:12px}
+.share-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.share-btns a,.share-btns button{flex:1;min-width:100px;padding:11px 8px;border-radius:9px;border:none;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-wa{background:#25d366;color:#000}
+.btn-copy{background:#333;color:#fff}
+.btn-email{background:#1a3a6e;color:#fff}
 </style>
 </head>
 <body>
@@ -96,6 +105,7 @@ h3{color:#c9a84c;font-size:15px;letter-spacing:1px;margin-bottom:14px;margin-top
   </div>
 
   <div class="msg-box" id="gcMsg"></div>
+  <div class="share-box" id="gcShareBox"><div class="share-title">📤 INVIA AL CLIENTE</div><div class="share-link" id="gcShareLink"></div><div class="share-btns"><a id="gcWaBtn" href="#" target="_blank" class="btn-wa">💬 WhatsApp</a><button onclick="copyGcLink()" class="btn-copy">📋 Copia link</button><a id="gcEmailBtn" href="#" class="btn-email">✉️ Email</a></div></div>
   <button class="btn btn-gold" id="gcBtn" onclick="createGiftCard()">Crea e Invia Gift Card</button>
 </div>
 
@@ -231,7 +241,19 @@ async function createGiftCard() {
     });
 
     if (data.success) {
-      showMsg('gcMsg','msg-ok','✅ Gift Card creata!\n\nCodice: ' + data.code + '\nValore: €' + importo + '\nDestinatario: ' + destinatario + '\nScadenza: ' + data.scadenza + '\n\nLink: ' + data.url);
+      showMsg('gcMsg','msg-ok','✅ Gift Card creata! Codice: ' + data.code);
+      // Show share box
+      var waPhone = document.getElementById('gcWhatsapp').value.replace(/[^\d+]/g,'');
+      var gcLink = data.url;
+      var mittente = document.getElementById('gcMittente').value || 'Mak Mixology';
+      var waMsg = encodeURIComponent('🎁 Hai ricevuto una Gift Card Mak Mixology!\n\n💶 Valore: €' + importo + '\n👤 Da: ' + mittente + '\n📅 Valida fino al: ' + data.scadenza + '\n\nMostra questo link allo staff per riscattarla:\n' + gcLink + '\n\n📍 Mak Mixology - Galleria delle Vittorie, Palermo\nhttps://maps.app.goo.gl/nGSs5MTHWEVfYnmr8');
+      document.getElementById('gcShareLink').textContent = gcLink;
+      document.getElementById('gcWaBtn').href = 'https://wa.me/' + waPhone.replace('+','') + '?text=' + waMsg;
+      var gcEmail = document.getElementById('gcEmail').value;
+      var emailSubj = encodeURIComponent('🎁 La tua Gift Card Mak Mixology - €' + importo);
+      var emailBody = encodeURIComponent('Ciao ' + destinatario + ',\n\nhai ricevuto una Gift Card Mak Mixology del valore di €' + importo + ' da ' + mittente + '.\n\nValida fino al: ' + data.scadenza + '\n\nClicca qui per visualizzarla:\n' + gcLink + '\n\nCi vediamo al Mak! 🍹');
+      document.getElementById('gcEmailBtn').href = 'mailto:' + gcEmail + '?subject=' + emailSubj + '&body=' + emailBody;
+      document.getElementById('gcShareBox').style.display = 'block';
       // Reset form
       document.getElementById('gcImporto').value = '';
       document.getElementById('gcMittente').value = '';
@@ -285,7 +307,18 @@ async function createBuono() {
     });
 
     if (data.success) {
-      showMsg('bonMsg','msg-ok','✅ Buono Omaggio creato!\n\nCodice: ' + data.code + '\nTipo: ' + (tipo === 'drink' ? '🍹 ' + valore : '💶 €' + valore) + '\nDestinatario: ' + destinatario + '\nScadenza: ' + data.scadenza + '\n\nLink: ' + data.url);
+      showMsg('bonMsg','msg-ok','✅ Buono Omaggio creato! Codice: ' + data.code);
+      var bonWaPhone = document.getElementById('bonWhatsapp').value.replace(/[^\d+]/g,'');
+      var bonLink = data.url;
+      var tipoStr = (tipo === 'drink') ? '🍹 Drink: ' + valore : '💶 Valore: €' + valore;
+      var bonWaMsg = encodeURIComponent('🎁 Hai ricevuto un Buono Omaggio dal Mak Mixology!\n\n' + tipoStr + '\n📅 Valido fino al: ' + data.scadenza + '\n\nMostra questo link allo staff per riscattarlo:\n' + bonLink + '\n\n📍 Mak Mixology - Galleria delle Vittorie, Palermo\nhttps://maps.app.goo.gl/nGSs5MTHWEVfYnmr8');
+      document.getElementById('bonShareLink').textContent = bonLink;
+      document.getElementById('bonWaBtn').href = 'https://wa.me/' + bonWaPhone.replace('+','') + '?text=' + bonWaMsg;
+      var bonEmail = document.getElementById('bonEmail').value;
+      var bonEmailSubj = encodeURIComponent('🎁 Il tuo Buono Omaggio Mak Mixology');
+      var bonEmailBody = encodeURIComponent('Ciao ' + destinatario + ',\n\nhai ricevuto un buono omaggio dal Mak Mixology.\n\n' + tipoStr + '\nValido fino al: ' + data.scadenza + '\n\nClicca qui per visualizzarlo:\n' + bonLink + '\n\nCi vediamo al Mak! 🍹');
+      document.getElementById('bonEmailBtn').href = 'mailto:' + bonEmail + '?subject=' + bonEmailSubj + '&body=' + bonEmailBody;
+      document.getElementById('bonShareBox').style.display = 'block';
       // Reset form
       document.getElementById('bonDestinatario').value = '';
       document.getElementById('bonWaNumber').value = '';
@@ -301,6 +334,27 @@ async function createBuono() {
 
   btn.disabled = false;
   btn.textContent = 'Crea e Invia Buono Omaggio';
+}
+
+function copyGcLink() {
+  var link = document.getElementById('gcShareLink').textContent;
+  navigator.clipboard.writeText(link).then(function() {
+    alert('Link copiato!');
+  }).catch(function() {
+    var ta = document.createElement('textarea');
+    ta.value = link; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    alert('Link copiato!');
+  });
+}
+function copyBonLink() {
+  var link = document.getElementById('bonShareLink').textContent;
+  navigator.clipboard.writeText(link).then(function() {
+    alert('Link copiato!');
+  }).catch(function() {
+    var ta = document.createElement('textarea');
+    ta.value = link; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    alert('Link copiato!');
+  });
 }
 </script>
 </body>
