@@ -155,7 +155,12 @@ function generateVoucher(nome, email, telefono, compleanno) {
   var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   var rnd = ''; for (var i=0;i<4;i++) rnd += chars.charAt(Math.floor(Math.random()*chars.length));
   var codice = 'MAK-'+nomePart+'-'+dd+mm+'-'+rnd;
-  var scadenza = new Date(bd.getTime()); scadenza.setDate(scadenza.getDate()+10);
+  // Scadenza: 10 giorni dall'anniversario dell'anno CORRENTE (non dall'anno di nascita)
+  var oggi = new Date();
+  var bdQuest = new Date(oggi.getFullYear(), bd.getMonth(), bd.getDate());
+  if (bdQuest < oggi) bdQuest.setFullYear(oggi.getFullYear() + 1);
+  var scadenza = new Date(bdQuest.getTime());
+  scadenza.setDate(scadenza.getDate() + 10);
   sheet.appendRow([codice, nome, email, telefono, fmtIT(bd), fmtIT(new Date()), fmtIT(scadenza), 'Valido', '']);
   // QR points to the script itself (no CORS issue)
   var validationUrl = 'https://pippopa1975.github.io/mak-voucher/?v=' + codice;
