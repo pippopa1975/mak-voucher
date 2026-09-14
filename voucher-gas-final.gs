@@ -6,7 +6,7 @@ function doGet(e) {
   var code   = (e.parameter.code || '').toString().trim().toUpperCase();
   var vCode  = (e.parameter.v || '').toString().trim().toUpperCase();
 
-  // API calls (from within the same page via google.script.run — kept for legacy)
+  var cb = e.parameter.callback || 'callback';
   if (action === 'generate') {
     var nome = e.parameter.nome || '';
     var email = e.parameter.email || '';
