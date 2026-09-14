@@ -243,7 +243,7 @@ async function createGiftCard() {
     if (data.success) {
       showMsg('gcMsg','msg-ok','✅ Gift Card creata! Codice: ' + data.code);
       // Show share box
-      var waPhone = document.getElementById('gcWhatsapp').value.replace(/[^\d+]/g,'');
+      var waPhone = (document.getElementById('gcWaPrefix').value + document.getElementById('gcWaNumber').value).replace(/[^0-9+]/g, '');
       var gcLink = data.url;
       var mittente = document.getElementById('gcMittente').value || 'Mak Mixology';
       var waMsg = encodeURIComponent('🎁 Hai ricevuto una Gift Card Mak Mixology!\n\n💶 Valore: €' + importo + '\n👤 Da: ' + mittente + '\n📅 Valida fino al: ' + data.scadenza + '\n\nMostra questo link allo staff per riscattarla:\n' + gcLink + '\n\n📍 Mak Mixology - Galleria delle Vittorie, Palermo\nhttps://maps.app.goo.gl/nGSs5MTHWEVfYnmr8');
@@ -308,7 +308,7 @@ async function createBuono() {
 
     if (data.success) {
       showMsg('bonMsg','msg-ok','✅ Buono Omaggio creato! Codice: ' + data.code);
-      var bonWaPhone = document.getElementById('bonWhatsapp').value.replace(/[^\d+]/g,'');
+      var bonWaPhone = (document.getElementById('bonWaPrefix').value + document.getElementById('bonWaNumber').value).replace(/[^0-9+]/g, '');
       var bonLink = data.url;
       var tipoStr = (tipo === 'drink') ? '🍹 Drink: ' + valore : '💶 Valore: €' + valore;
       var bonWaMsg = encodeURIComponent('🎁 Hai ricevuto un Buono Omaggio dal Mak Mixology!\n\n' + tipoStr + '\n📅 Valido fino al: ' + data.scadenza + '\n\nMostra questo link allo staff per riscattarlo:\n' + bonLink + '\n\n📍 Mak Mixology - Galleria delle Vittorie, Palermo\nhttps://maps.app.goo.gl/nGSs5MTHWEVfYnmr8');
