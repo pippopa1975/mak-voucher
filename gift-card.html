@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mak Mixology — Gift Card</title>
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:28px 16px}
+.logo-img{width:90px;margin-bottom:18px}
+.card{background:#111;border:1px solid #c9a84c44;border-radius:18px;padding:28px 22px;max-width:420px;width:100%;text-align:center}
+h2{color:#c9a84c;font-size:18px;letter-spacing:2px;margin-bottom:4px}
+.subtitle{color:#888;font-size:13px;margin-bottom:20px}
+.form-group{text-align:left;margin-bottom:14px}
+.form-group label{display:block;color:#c9a84c;font-size:12px;font-weight:600;letter-spacing:1px;margin-bottom:5px;text-transform:uppercase}
+.form-group input,.form-group textarea{width:100%;background:#1a1a1a;border:1px solid #333;color:#fff;font-size:15px;padding:12px 14px;border-radius:10px;outline:none;transition:border-color .2s}
+.form-group input:focus,.form-group textarea:focus{border-color:#c9a84c}
+.form-group textarea{resize:none;height:60px;font-family:inherit}
+.form-group .hint{color:#666;font-size:11px;margin-top:3px}
+.amount-row{display:flex;gap:8px;margin-bottom:14px}
+.amount-btn{flex:1;background:#1a1a1a;border:1px solid #333;color:#fff;font-size:15px;font-weight:700;padding:12px 6px;border-radius:10px;cursor:pointer;transition:all .2s}
+.amount-btn.active,.amount-btn:hover{border-color:#c9a84c;color:#c9a84c;background:#1a1a0d}
+.wa-row{display:flex;gap:8px}
+.wa-prefix{width:80px;flex-shrink:0}
+.wa-number{flex:1}
+#stripe-element{background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:14px;margin-bottom:14px;min-height:48px}
+.btn-pay{width:100%;padding:14px;border-radius:12px;border:none;font-size:16px;font-weight:700;cursor:pointer;background:#c9a84c;color:#000;letter-spacing:1px;transition:opacity .2s;margin-top:6px}
+.btn-pay:disabled{opacity:.5;cursor:not-allowed}
+.btn-pay:hover:not(:disabled){opacity:.9}
+.error-msg{color:#e87f7f;font-size:13px;margin-top:8px;display:none}
+.success-screen{display:none}
+.success-box{background:#0d2b0d;border:1px solid #2d7a2d;border-radius:12px;padding:22px 16px;margin:18px 0;text-align:center}
+.success-box .check{font-size:48px;margin-bottom:10px}
+.success-box .gc-code{font-size:22px;font-weight:700;letter-spacing:3px;color:#7fe87f;margin:10px 0}
+.success-box .gc-detail{font-size:14px;color:#ccc;line-height:1.6}
+.maps-link{display:inline-block;margin-top:16px;color:#c9a84c;font-size:13px;text-decoration:none;border:1px solid #c9a84c44;padding:8px 16px;border-radius:20px}
+.maps-link:hover{background:#c9a84c22}
+.loading-spinner{display:inline-block;width:18px;height:18px;border:2px solid #333;border-top-color:#c9a84c;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.powered{color:#444;font-size:11px;margin-top:24px}
+</style>
+</head>
+<body>
+<img class="logo-img" src="https://raw.githubusercontent.com/pippopa1975/mak-voucher/main/logo.png" onerror="this.style.display='none'">
+
+<!-- FORM SCREEN -->
+<div class="card" id="formScreen">
+  <h2>🎁 GIFT CARD</h2>
+  <div class="subtitle">Regala un'esperienza al Mak Mixology</div>
+
+  <div class="form-group">
+    <label>Importo (€)</label>
+    <div class="amount-row">
+      <button class="amount-btn" onclick="pickAmount(15)">€15</button>
+      <button class="amount-btn" onclick="pickAmount(25)">€25</button>
+      <button class="amount-btn" onclick="pickAmount(50)">€50</button>
+      <button class="amount-btn" onclick="pickAmount(100)">€100</button>
+    </div>
+    <input type="number" id="importo" min="10" step="1" placeholder="Oppure inserisci importo (min. €10)" oninput="clearAmountBtns()">
+  </div>
+
+  <div class="form-group">
+    <label>Il tuo nome</label>
+    <input type="text" id="mittente" placeholder="Il tuo nome" required>
+  </div>
+
+  <div class="form-group">
+    <label>Nome destinatario</label>
+    <input type="text" id="destinatario" placeholder="Chi riceverà la gift card" required>
+  </div>
+
+  <div class="form-group">
+    <label>WhatsApp destinatario</label>
+    <div class="wa-row">
+      <input type="text" id="waPrefix" class="wa-prefix" value="+39" placeholder="+39">
+      <input type="tel" id="waNumber" class="wa-number" placeholder="345 1234567">
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>Email destinatario</label>
+    <input type="email" id="email" placeholder="email@esempio.com">
+  </div>
+
+  <div class="form-group">
+    <label>Messaggio (opzionale)</label>
+    <textarea id="messaggio" placeholder="Un messaggio per il destinatario..."></textarea>
+  </div>
+
+  <div class="form-group">
+    <label>Pagamento</label>
+    <div id="stripe-element"></div>
+  </div>
+
+  <div class="error-msg" id="errorMsg"></div>
+  <button class="btn-pay" id="btnPay" onclick="handlePay()">Acquista Gift Card</button>
+</div>
+
+<!-- SUCCESS SCREEN -->
+<div class="card success-screen" id="successScreen">
+  <h2>🎉 GIFT CARD CREATA!</h2>
+  <div class="success-box">
+    <div class="check">✅</div>
+    <div>Codice Gift Card:</div>
+    <div class="gc-code" id="gcCode"></div>
+    <div class="gc-detail" id="gcDetail"></div>
+  </div>
+  <a class="maps-link" href="https://maps.app.goo.gl/nGSs5MTHWEVfYnmr8?g_st=iw" target="_blank">📍 Trovaci su Google Maps</a>
+</div>
+
+<div class="powered">Mak Mixology — Palermo</div>
+
+<script>
+var GAS = 'https://script.google.com/macros/s/AKfycbx1Ck35hUTsO_uKGZe7fcpgURCRnHmgvdkVyIkTxT_lm9eLSAw46wUI9BvQ-jOjQnoJ6A/exec';
+var STRIPE_PK = 'pk_test_51UFZb4PwRSvD3Y2qSeVHRcRB4EzzudIJvcuVWVmN2zsmksbGYncR3qK1kvErvJHNgMlNTRWa1yBJdcnTtzSi5wzG00x60MINl1';
+
+var stripe = Stripe(STRIPE_PK);
+var elements, paymentElement;
+var clientSecret = null;
+var currentAmount = 0;
+
+function pickAmount(val) {
+  document.getElementById('importo').value = val;
+  currentAmount = val;
+  document.querySelectorAll('.amount-btn').forEach(function(b) {
+    b.classList.toggle('active', parseInt(b.textContent.replace('€','')) === val);
+  });
+}
+
+function clearAmountBtns() {
+  document.querySelectorAll('.amount-btn').forEach(function(b) { b.classList.remove('active'); });
+  currentAmount = parseInt(document.getElementById('importo').value) || 0;
+}
+
+function showError(msg) {
+  var el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+function callGAS(params) {
+  var qs = Object.keys(params).map(function(k){ return k+'='+encodeURIComponent(params[k]); }).join('&');
+  return fetch(GAS + '?' + qs)
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(function(t) {
+      var m = t.match(/^[^(]+\((.+)\)\s*;?\s*$/s);
+      return JSON.parse(m ? m[1] : t);
+    });
+}
+
+async function handlePay() {
+  showError('');
+  var amount = parseInt(document.getElementById('importo').value);
+  var mittente = document.getElementById('mittente').value.trim();
+  var destinatario = document.getElementById('destinatario').value.trim();
+  var waPrefix = document.getElementById('waPrefix').value.trim();
+  var waNumber = document.getElementById('waNumber').value.trim().replace(/\s+/g,'');
+  var email = document.getElementById('email').value.trim();
+  var messaggio = document.getElementById('messaggio').value.trim();
+
+  if (!amount || amount < 10) { showError('Importo minimo: €10'); return; }
+  if (!mittente) { showError('Inserisci il tuo nome'); return; }
+  if (!destinatario) { showError('Inserisci il nome del destinatario'); return; }
+
+  var whatsapp = waPrefix + waNumber;
+
+  var btn = document.getElementById('btnPay');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading-spinner"></span>Elaborazione...';
+
+  try {
+    // 1. Create PaymentIntent via GAS
+    var piData = await callGAS({action: 'create_payment_intent', amount: amount});
+    if (!piData.clientSecret) throw new Error(piData.message || 'Errore creazione pagamento');
+
+    clientSecret = piData.clientSecret;
+
+    // 2. Initialize Stripe Elements if not done
+    if (!elements) {
+      elements = stripe.elements({
+        clientSecret: clientSecret,
+        appearance: {
+          theme: 'night',
+          variables: {
+            colorPrimary: '#c9a84c',
+            colorBackground: '#1a1a1a',
+            colorText: '#ffffff',
+            colorDanger: '#e87f7f',
+            borderRadius: '10px'
+          }
+        }
+      });
+      paymentElement = elements.create('payment');
+      paymentElement.mount('#stripe-element');
+
+      btn.disabled = false;
+      btn.textContent = 'Paga €' + amount;
+      return;
+    }
+
+    // 3. Confirm payment
+    var result = await stripe.confirmPayment({
+      elements: elements,
+      confirmParams: {
+        return_url: window.location.href
+      },
+      redirect: 'if_required'
+    });
+
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+
+    // 4. Payment succeeded - create gift card
+    btn.innerHTML = '<span class="loading-spinner"></span>Creazione Gift Card...';
+
+    var gcData = await callGAS({
+      action: 'create_gift_card',
+      mittente: mittente,
+      destinatario: destinatario,
+      whatsapp: whatsapp,
+      email: email,
+      importo: amount,
+      messaggio: messaggio,
+      payment_intent: result.paymentIntent ? result.paymentIntent.id : ''
+    });
+
+    if (!gcData.success) throw new Error(gcData.message || 'Errore creazione gift card');
+
+    // Show success
+    document.getElementById('formScreen').style.display = 'none';
+    document.getElementById('successScreen').style.display = 'block';
+    document.getElementById('gcCode').textContent = gcData.code;
+    document.getElementById('gcDetail').innerHTML =
+      '💰 Valore: <strong>€' + amount + '</strong><br>' +
+      '🎁 Per: <strong>' + destinatario + '</strong><br>' +
+      '📅 Scadenza: <strong>' + gcData.scadenza + '</strong><br>' +
+      (messaggio ? '💌 "' + messaggio + '"<br>' : '') +
+      '<br>La gift card è stata registrata e il destinatario sarà notificato.';
+
+  } catch(err) {
+    showError(err.message || 'Errore imprevisto. Riprova.');
+    btn.disabled = false;
+    btn.textContent = 'Acquista Gift Card';
+  }
+}
+
+// Check if returning from Stripe redirect
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var piClientSecret = params.get('payment_intent_client_secret');
+  if (piClientSecret) {
+    document.getElementById('formScreen').innerHTML =
+      '<h2>🎁 GIFT CARD</h2><div class="subtitle">Verifica pagamento in corso...</div>' +
+      '<div style="padding:20px;color:#c9a84c"><span class="loading-spinner"></span> Elaborazione...</div>';
+
+    stripe.retrievePaymentIntent(piClientSecret).then(function(result) {
+      if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+        document.getElementById('formScreen').innerHTML =
+          '<h2>🎉 PAGAMENTO RICEVUTO</h2>' +
+          '<div style="background:#0d2b0d;border:1px solid #2d7a2d;border-radius:12px;padding:18px;margin:18px 0;color:#7fe87f">' +
+          '✅ Pagamento confermato!<br>La tua Gift Card sarà creata e inviata al destinatario.' +
+          '</div>';
+      } else {
+        document.getElementById('formScreen').innerHTML =
+          '<h2>⚠️ PAGAMENTO</h2>' +
+          '<div style="background:#2b0d0d;border:1px solid #7a2d2d;border-radius:12px;padding:18px;margin:18px 0;color:#e87f7f">' +
+          'Stato pagamento: ' + (result.paymentIntent ? result.paymentIntent.status : 'sconosciuto') +
+          '<br>Contattaci: makmixology@gmail.com</div>';
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>
