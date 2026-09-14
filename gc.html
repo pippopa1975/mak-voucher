@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mak Mixology — Gift Card</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:28px 16px}
+.logo-img{width:90px;margin-bottom:20px}
+.card{background:#111;border:1px solid #c9a84c44;border-radius:18px;padding:28px 22px;max-width:400px;width:100%;text-align:center}
+h2{color:#c9a84c;font-size:18px;letter-spacing:2px;margin-bottom:6px}
+.code{font-size:20px;font-weight:700;letter-spacing:3px;color:#fff;margin:10px 0}
+.sub{font-size:13px;color:#888;margin-bottom:16px}
+.sbox{border-radius:12px;padding:18px 16px;margin:16px 0;font-size:15px;line-height:1.7;white-space:pre-line}
+.v{background:#0d2b0d;border:1px solid #2d7a2d;color:#7fe87f}
+.r{background:#2b1a00;border:1px solid #c9a84c;color:#c9a84c}
+.e{background:#2b0d0d;border:1px solid #7a2d2d;color:#e87f7f}
+.l{background:#1a1a1a;border:1px solid #555;color:#aaa}
+.qr-wrap{margin:16px 0 6px;display:none}
+.qr-wrap img{border-radius:10px;border:2px solid #c9a84c44}
+.qr-label{font-size:12px;color:#666;margin-top:6px}
+.staff-btn{margin-top:22px;background:none;border:1px solid #333;color:#555;font-size:12px;padding:8px 18px;border-radius:20px;cursor:pointer;width:100%;display:none}
+.btn-redeem{width:100%;padding:13px;border-radius:10px;border:1px solid #2d7a2d;font-size:15px;font-weight:700;cursor:pointer;margin-top:14px;background:#1a5c1a;color:#7fe87f;display:none}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:100}
+.pin-box{background:#1a1a1a;border:1px solid #c9a84c;border-radius:16px;padding:28px 24px;width:300px;text-align:center}
+.pin-box h3{color:#c9a84c;margin-bottom:16px;font-size:16px}
+.pin-input{width:100%;background:#111;border:1px solid #444;color:#fff;font-size:24px;letter-spacing:6px;text-align:center;padding:12px;border-radius:8px;margin-bottom:14px}
+.btn{width:100%;padding:13px;border-radius:10px;border:none;font-size:15px;font-weight:700;cursor:pointer;margin-top:6px}
+.btn-ok{background:#c9a84c;color:#000}
+.btn-no{background:#333;color:#aaa}
+.maps-link{display:inline-block;margin-top:16px;color:#c9a84c;font-size:13px;text-decoration:none;border:1px solid #c9a84c44;padding:8px 16px;border-radius:20px}
+.maps-link:hover{background:#c9a84c22}
+.loading-spinner{display:inline-block;width:16px;height:16px;border:2px solid #333;border-top-color:#c9a84c;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.powered{color:#444;font-size:11px;margin-top:22px}
+</style>
+</head>
+<body>
+<img class="logo-img" src="https://raw.githubusercontent.com/pippopa1975/mak-voucher/main/logo.png" onerror="this.style.display='none'">
+
+<div class="card">
+  <h2>🎁 GIFT CARD</h2>
+  <div class="code" id="codeEl">—</div>
+  <div class="sub">Mak Mixology — Palermo</div>
+  <div class="sbox l" id="sb">⏳ Verifica in corso...</div>
+  <div class="qr-wrap" id="qrW">
+    <img id="qrImg" src="" width="180" height="180">
+    <div class="qr-label">📱 Fai scansionare al personale</div>
+  </div>
+  <button class="btn-redeem" id="btnR" onclick="doRedeem()">✅ Segna come utilizzata</button>
+  <button class="staff-btn" id="btnS" onclick="showPin()">👤 Staff — Riscatta gift card</button>
+  <a class="maps-link" href="https://maps.app.goo.gl/nGSs5MTHWEVfYnmr8?g_st=iw" target="_blank" style="display:none" id="mapsLink">📍 Trovaci su Google Maps</a>
+</div>
+
+<div class="overlay" id="ov">
+  <div class="pin-box">
+    <h3>🔐 PIN Staff</h3>
+    <input class="pin-input" type="password" inputmode="numeric" id="pinI" maxlength="6" placeholder="• • • •">
+    <button class="btn btn-ok" onclick="verifyPin()">Conferma</button>
+    <button class="btn btn-no" onclick="hidePin()">Annulla</button>
+  </div>
+</div>
+
+<div class="powered">Mak Mixology — Palermo</div>
+
+<script>
+var GAS = 'https://script.google.com/macros/s/AKfycbx1Ck35hUTsO_uKGZe7fcpgURCRnHmgvdkVyIkTxT_lm9eLSAw46wUI9BvQ-jOjQnoJ6A/exec';
+var code = (new URLSearchParams(window.location.search).get('code') || '').toUpperCase();
+var PIN = '1250';
+
+document.getElementById('codeEl').textContent = code || '—';
+
+if (!code) {
+  setBox('e', 'Nessun codice gift card trovato.');
+} else {
+  document.getElementById('qrImg').src =
+    'https://api.qrserver.com/v1/create-qr-code/?size=220x220&color=c9a84c&bgcolor=1a1a1a&data=' +
+    encodeURIComponent(window.location.href);
+  callGAS({action:'check_gc', code:code}, onCheck);
+}
+
+function callGAS(params, cb) {
+  var qs = Object.keys(params).map(function(k){ return k+'='+encodeURIComponent(params[k]); }).join('&');
+  fetch(GAS + '?' + qs)
+    .then(function(r){
+      if (!r.ok) throw new Error('HTTP '+r.status);
+      return r.text();
+    })
+    .then(function(t){
+      var m = t.match(/^[^(]+\((.+)\)\s*;?\s*$/s);
+      var data = JSON.parse(m ? m[1] : t);
+      cb(data);
+    })
+    .catch(function(err){
+      setBox('e', '⏰ Connessione non riuscita.\n'+err.message+'\nRicarica la pagina.');
+    });
+}
+
+function onCheck(d) {
+  if (d.status === 'valid') {
+    var info = '✅ GIFT CARD VALIDA\n💰 Valore: €' + d.importo + '\n🎁 Per: ' + d.destinatario;
+    if (d.mittente) info += '\n🎀 Da: ' + d.mittente;
+    info += '\n📅 Scadenza: ' + d.scadenza;
+    setBox('v', info);
+    document.getElementById('qrW').style.display = 'block';
+    document.getElementById('btnS').style.display = 'block';
+    document.getElementById('mapsLink').style.display = 'inline-block';
+  } else if (d.status === 'redeemed') {
+    setBox('r', '⚠️ GIÀ UTILIZZATA\n🎁 ' + d.destinatario + '\n🗓 ' + (d.dataRiscatto || ''));
+  } else if (d.status === 'expired') {
+    setBox('e', '❌ GIFT CARD SCADUTA\n📅 ' + d.scadenza);
+  } else {
+    setBox('e', '❌ GIFT CARD NON TROVATA');
+  }
+}
+
+function onRedeem(d) {
+  if (d.success) {
+    setBox('v', '🎉 RISCATTATA!\n' + d.message);
+    document.getElementById('btnR').style.display = 'none';
+    document.getElementById('btnS').style.display = 'none';
+    document.getElementById('qrW').style.display = 'none';
+  } else {
+    setBox('e', '❌ ' + d.message);
+  }
+}
+
+function doRedeem() {
+  document.getElementById('btnR').style.display = 'none';
+  setBox('l', '⏳ Riscatto in corso...');
+  callGAS({action:'redeem_gc', code:code}, onRedeem);
+}
+
+function setBox(cls, msg) {
+  var b = document.getElementById('sb');
+  b.className = 'sbox ' + cls;
+  b.textContent = msg;
+}
+
+function showPin() {
+  document.getElementById('ov').style.display = 'flex';
+  document.getElementById('pinI').value = '';
+  document.getElementById('pinI').focus();
+}
+function hidePin() { document.getElementById('ov').style.display = 'none'; }
+function verifyPin() {
+  if (document.getElementById('pinI').value.trim() !== PIN) {
+    document.getElementById('pinI').value = '';
+    document.getElementById('pinI').placeholder = 'PIN errato';
+    return;
+  }
+  hidePin();
+  document.getElementById('btnR').style.display = 'block';
+  document.getElementById('btnS').style.display = 'none';
+}
+document.getElementById('pinI').addEventListener('keydown', function(e){ if(e.key==='Enter') verifyPin(); });
+</script>
+</body>
+</html>
