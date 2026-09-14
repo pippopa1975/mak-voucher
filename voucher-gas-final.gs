@@ -12,7 +12,7 @@ var CRM_SHEET_ID = '1txRlZ0uuUg1vW5CwqTZ47x2CuVzADlVxIVbzq-vscW4';
 var GC_SHEET_NAME = 'Gift Card';
 var BON_SHEET_NAME = 'Buoni Omaggio';
 var GITHUB_BASE = 'https://pippopa1975.github.io/mak-voucher/';
-var STRIPE_SK = 'YOUR_STRIPE_SECRET_KEY_HERE';
+var STRIPE_SK = PropertiesService.getScriptProperties().getProperty('STRIPE_SK') || '';
 
 /* ── MAIN ROUTER (GET) ──────────────────────────────────────────── */
 
