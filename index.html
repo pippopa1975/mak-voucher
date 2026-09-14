@@ -217,31 +217,43 @@
         }
 
         function jsonp(params, callback) {
-            var url = APPS_SCRIPT_URL + '?' + params;
-            fetch(url, {redirect: 'follow'})
-                .then(function(r) {
-                    if (!r.ok) throw new Error('HTTP ' + r.status);
-                    return r.json();
-                })
-                .then(function(data) { callback(data); })
-                .catch(function(err) {
-                    // Fallback to JSONP if fetch fails (CORS)
-                    var cbName = '_voucherCb' + (++jsonpCounter) + '_' + Date.now();
-                    window[cbName] = function(data) {
-                        callback(data);
-                        delete window[cbName];
-                        var el = document.getElementById('s_' + cbName);
-                        if (el) el.remove();
-                    };
-                    var s = document.createElement('script');
-                    s.id = 's_' + cbName;
-                    s.src = url + '&callback=' + cbName;
-                    s.onerror = function() {
-                        callback({ error: true, message: 'Errore di connessione' });
-                        delete window[cbName]; s.remove();
-                    };
-                    document.body.appendChild(s);
-                });
+            // Sandboxed iframe: origine nulla, nessun cookie Google inviato
+            // -> Apps Script risponde 200 (anonimo) su qualsiasi browser/account
+            var cbName = '_voucherCb' + (++jsonpCounter) + '_' + Date.now();
+            var url = APPS_SCRIPT_URL + '?' + params + '&callback=' + cbName;
+
+            var tid = setTimeout(function() {
+                window.removeEventListener('message', handler);
+                try { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); } catch(e) {}
+                callback({ error: true, message: 'Timeout — riprova' });
+            }, 15000);
+
+            function handler(event) {
+                if (event.data && event.data.type === cbName) {
+                    clearTimeout(tid);
+                    window.removeEventListener('message', handler);
+                    try { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); } catch(e) {}
+                    callback(event.data.result);
+                }
+            }
+            window.addEventListener('message', handler);
+
+            var iframe = document.createElement('iframe');
+            iframe.sandbox = 'allow-scripts';
+            iframe.style.cssText = 'display:none;width:0;height:0;border:0;position:absolute';
+
+            // Inietta script nel contesto isolato dell'iframe
+            var iframeHtml = '<!DOCTYPE html><html><body><script>' +
+                'var u="' + url.replace(/\\/g,'\\\\').replace(/"/g,'\\"') + '";' +
+                'window["' + cbName + '"]=function(d){parent.postMessage({type:"' + cbName + '",result:d},"*");};' +
+                'var s=document.createElement("script");' +
+                's.src=u;' +
+                's.onerror=function(){parent.postMessage({type:"' + cbName + '",result:{error:true,message:"Connessione fallita"}},"*");};' +
+                'document.body.appendChild(s);' +
+                '<\/script></body></html>';
+
+            iframe.srcdoc = iframeHtml;
+            document.body.appendChild(iframe);
         }
 
         function formatDate(dateStr) {
